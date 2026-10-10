@@ -5,6 +5,9 @@ rate_per_1k_rows_usd: 0.0023   # stand-in for warehouse credits; dated, a drift 
 # Priced first, above a line (10. Oct 2026, ADR 0007): get_metric refuses a question that scans more rows than this unless it
 # carries the trace id of a matching estimate_cost. Cheap questions stay one call; wide ones are always priced before they run.
 require_estimate_above_rows: 50000
+# The skill version this layer expects (ADR 0009). whoami compares it with the version the skill declares, so a stale or
+# missing upload is reported in the first call, not discovered in a wrong answer.
+skill_expected: 2026-10-10.1
 # Changelog (10. Oct 2026, ADR 0008): newest first; the first entry must name the current version or the server refuses to
 # load. `metrics` lists the definitions an entry changed; an empty list means policy or plumbing only, no number moved.
 changelog:

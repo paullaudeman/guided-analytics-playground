@@ -102,6 +102,8 @@ The role comes from the config, not from a login: a local stdio server has none 
 4. As **csm**: *"All member-level data for every practice this year."* Priced before it runs: rows scanned, warehouse cost, estimated tokens.
 5. As **admin**: *"Show me the cost report."* Estimate versus actual for every answer so far.
 
+**If answers look out of date,** ask Claude to run `whoami` and show `health`. It reports whether the server is older than the files on disk (fix: quit Claude Desktop fully and reopen) and whether the uploaded skill is the version this layer expects (fix: re-upload `skill/shape-my-question`). See `docs/adr/0009`.
+
 Menu names in Claude Desktop move between versions; if a label differs, the setting is still there. Server logs: `~/Library/Logs/Claude/mcp-server-northstar-as-*.log` on macOS. The same server also runs in Claude Code: `claude mcp add northstar -e ROLE=csm -e PRINCIPAL=csm.demo@northstar.example -e PRACTICE_ID=all -- uv run -q --with "mcp<2" --with duckdb --with pyyaml python /ABSOLUTE/PATH/guided-analytics-playground/server.py`.
 
 ## See it run

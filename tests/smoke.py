@@ -117,6 +117,17 @@ assert lines[-1]["trace_id"] == last["trace_id"] and all(l["trace_id"] != "t-old
 assert lines[-1]["answered"]["layer_version"] == last["version"] and "value" in lines[-1]["answered"], lines[-1]
 ok("audit_log returns the most recent lines across days, and records the answered value and definition version")
 
+# ---- health: is the skill current, is the server current (ADR 0009)
+s = load("csm", "all")
+print("=== health check in whoami")
+exp = s.CFG["skill_expected"]
+assert s.whoami(skill_version=exp)["health"]["ok"]; ok(f"current skill {exp} on a current server: ok")
+h = s.whoami(skill_version="2000-01-01.1")["health"]; assert h["skill"]["status"] == "outdated" and "re-upload" in h["skill"]["fix"], h; ok("older skill reported as outdated, with the fix", h["skill"]["fix"])
+h = s.whoami()["health"]; assert h["skill"]["status"] == "undeclared" and not h["ok"], h; ok("no skill version reported as undeclared")
+s.STARTED["files"]["metrics.yaml"] -= 1
+h = s.whoami(skill_version=exp)["health"]; assert h["server"]["status"] == "stale" and "restart" in h["server"]["fix"], h; ok("layer changed after start: server reported stale, with the fix")
+assert f"skill_version=\"{exp}\"" in (pathlib.Path(__file__).parent.parent / "skill/shape-my-question/SKILL.md").read_text(); ok("the skill declares the version the layer expects")
+
 # ---- priced first, above a line (ADR 0007)
 s = load("admin", "all")
 print("=== priced first, above the row line")

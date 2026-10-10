@@ -20,6 +20,9 @@ ROLE = os.environ.get("ROLE", "csm")
 ROLES = ["external", "csm", "analyst", "admin"]
 METRICS = CFG["metrics"]
 CHANGELOG = CFG.get("changelog") or []
+# ADR 0009: what this process loaded, so whoami can tell a stale server (Desktop not restarted) from a current one.
+STARTED = {"at": dt.datetime.now().isoformat(timespec="seconds"), "layer_version": str(CFG["version"]),
+           "files": {f: (HERE / f).stat().st_mtime for f in ("metrics.yaml", "server.py", "prices.yaml")}}
 # ADR 0008: a version bump without a changelog entry does not load, so "what changed" can always be answered.
 if not CHANGELOG or str(CHANGELOG[0]["version"]) != str(CFG["version"]):
     raise SystemExit(f"metrics.yaml: version {CFG['version']} has no changelog entry at the top; refusing to load (ADR 0008)")
@@ -192,9 +195,27 @@ def _find_trace(trace_id, tool, days=1):
     return None
 
 # ------------------------------------------------------------------ tools
-def whoami() -> dict:
-    """Who the server believes is asking, and where that belief comes from (ADR 0002)."""
-    return {"principal": PRINCIPAL, "role": ROLE, "practice_scope": PRACTICE_SCOPE,
+def _health(skill_version):
+    """Is the server current with the files on disk, and is the client's skill the one this layer expects (ADR 0009)?"""
+    changed = [f for f, mt in STARTED["files"].items() if (HERE / f).stat().st_mtime != mt]
+    server = {"status": "stale" if changed else "current", "started": STARTED["at"], "layer_version_loaded": STARTED["layer_version"]}
+    if changed:
+        server["fix"] = f"{', '.join(changed)} changed on disk after this server started: restart the MCP client (Claude Desktop: quit fully, then reopen)"
+    expected = str(CFG.get("skill_expected") or "")
+    if not skill_version:
+        skill = {"status": "undeclared", "expected": expected,
+                 "fix": "no skill version was declared: the shape-my-question skill is missing, or an older upload that predates the check; re-upload it"}
+    elif str(skill_version) != expected:
+        skill = {"status": "outdated" if str(skill_version) < expected else "newer than this layer", "declared": str(skill_version), "expected": expected,
+                 "fix": "re-upload the shape-my-question skill from the repo" if str(skill_version) < expected else "restart the MCP client so the server loads the newer layer"}
+    else:
+        skill = {"status": "current", "declared": str(skill_version)}
+    return {"server": server, "skill": skill, "ok": not changed and skill["status"] == "current"}
+
+def whoami(skill_version: Optional[str] = None) -> dict:
+    """Who the server believes is asking, and where that belief comes from (ADR 0002). Pass skill_version (from the skill's own text)
+    to have the server check that the skill and the server are both current (ADR 0009)."""
+    return {"principal": PRINCIPAL, "role": ROLE, "practice_scope": PRACTICE_SCOPE, "health": _health(skill_version),
             "scope_meaning": {None: "UNSET or invalid: every data tool will refuse", "all": "explicit grant: every practice"}.get(PRACTICE_SCOPE, f"one practice: {PRACTICE_SCOPE}"),
             "policy": POLICY["roles"].get(ROLE, {"note": f"no statement for role '{ROLE}': everything denied"}),
             "source": "role and scope from server config; production: OIDC token subject and groups via a remote MCP connector",
