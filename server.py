@@ -204,7 +204,7 @@ def _health(skill_version):
     expected = str(CFG.get("skill_expected") or "")
     if not skill_version:
         skill = {"status": "undeclared", "expected": expected,
-                 "fix": "no skill version was declared: the shape-my-question skill is missing, or an older upload that predates the check; re-upload it"}
+                 "fix": "no skill version declared: either the shape-my-question skill was not used for this call (fine for a direct question), or it is missing, or it is an upload older than this check (then re-upload it). Run the skill to tell which"}
     elif str(skill_version) != expected:
         skill = {"status": "outdated" if str(skill_version) < expected else "newer than this layer", "declared": str(skill_version), "expected": expected,
                  "fix": "re-upload the shape-my-question skill from the repo" if str(skill_version) < expected else "restart the MCP client so the server loads the newer layer"}
