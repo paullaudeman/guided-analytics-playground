@@ -108,6 +108,14 @@ shutil.copy(root / "server.py", _d); shutil.copy(root / "prices.yaml", _d); (_d 
 r = subprocess.run([sys.executable, "-c", "import server"], cwd=_d, capture_output=True, text=True, env={**os.environ, "TRACES": str(_d / "t")})
 assert r.returncode != 0 and "no changelog entry" in (r.stdout + r.stderr), (r.returncode, r.stderr[-300:])
 ok("a version bump without a changelog entry refuses to load")
+# the audit log returns the most recent lines, across days, and each answer line says what was answered and under which definition
+_old = pathlib.Path(os.environ["TRACES"]) / f"{(__import__('datetime').date.today() - __import__('datetime').timedelta(days=3))}.jsonl"
+_old.write_text(json.dumps({"trace_id": "t-old", "ts": "2000-01-01T00:00:00", "tool": "get_metric"}) + "\n")
+last = s.get_metric("care_gaps_open", grain="total", practice_id=12)
+lines = s.audit_log(3)["lines"]
+assert lines[-1]["trace_id"] == last["trace_id"] and all(l["trace_id"] != "t-old" for l in lines), [l["trace_id"] for l in lines]
+assert lines[-1]["answered"]["layer_version"] == last["version"] and "value" in lines[-1]["answered"], lines[-1]
+ok("audit_log returns the most recent lines across days, and records the answered value and definition version")
 
 # ---- priced first, above a line (ADR 0007)
 s = load("admin", "all")

@@ -175,7 +175,7 @@ def _price_tokens(in_tok, out_tok, model):
 
 def _load_traces(days=1):
     out = []
-    for i in range(days):
+    for i in reversed(range(days)):   # oldest day first, so the list is chronological and [-n:] is the most recent (ADR 0004 fix, 10. Oct 2026)
         f = TRACES / f"{dt.date.today() - dt.timedelta(days=i)}.jsonl"
         if f.exists():
             for l in f.read_text().splitlines():
@@ -285,7 +285,10 @@ def get_metric(metric: Metric, grain: Grain = "total", practice_id: Optional[int
     actual = {"rows_scanned": rows, "result_rows": len(res), "warehouse_usd": round(rows / 1000 * CFG["rate_per_1k_rows_usd"], 6), "latency_ms": ms,
               "label": "ACTUAL warehouse; model tokens arrive via record_answer"}
     m = METRICS[metric]
-    tid = _trace(tool="get_metric", args=args, shaped_question=shaped_question, sql=sql, actual=actual, estimate_trace_id=estimate_trace_id)
+    # the audit line carries what was answered and under which definition, so "was this comparable?" can be settled later (ADR 0008)
+    answered = {"layer_version": str(CFG["version"]), "definition_changed_in": _defined_in(metric),
+                **({"value": values} if grain == "total" else {"result_rows": len(res)})}
+    tid = _trace(tool="get_metric", args=args, shaped_question=shaped_question, sql=sql, actual=actual, estimate_trace_id=estimate_trace_id, answered=answered)
     return {"metric": metric, "value": values, "unit": m["unit"], "definition": m["description"], "owner": m["owner"], "version": CFG["version"],
             "definition_changed_in": _defined_in(metric), "layer_changes_since_definition": _since(metric),
             "window": {"from": month_from, "to": month_to}, "filters": {"practice_id": practice_id, "payer": payer, "measure": measure},
