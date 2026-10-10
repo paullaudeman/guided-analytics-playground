@@ -42,6 +42,68 @@ Evals: 20 questions (signed-pending until a person signs the file), accuracy and
 | **Tracing** | JSONL trace per tool call with trace id, principal, SQL, rows, latency, refusal reason; the id is returned so the answer can cite it | the server sees tool calls, not the chat |
 | **Cost** | `estimate_cost` before any query (rows × rate, token estimate), actual cost on every `get_metric`, both on the trace; `cost_report` shows estimate versus actual per answer, per role, per metric | a local MCP server cannot see Claude's tokens; counts are estimates until the same flow runs through the Agent SDK, and every line says so |
 
+## Run it in Claude Desktop
+
+You need macOS or Windows with [Claude Desktop](https://claude.ai/download), and [uv](https://docs.astral.sh/uv/) (it fetches Python and the three dependencies on first run).
+
+**1. Clone and generate the data** (synthetic and seeded, so every clone gets the same numbers):
+
+```bash
+git clone https://github.com/paullaudeman/guided-analytics-playground.git
+cd guided-analytics-playground
+uv run --with duckdb python data/generate.py        # writes data/northstar.duckdb
+uv run --with "mcp<2",duckdb,pyyaml python tests/smoke.py   # 40 checks should pass
+```
+
+**2. Register the server, once per role.** Claude Desktop → Settings → Developer → Edit Config opens `claude_desktop_config.json`. Add these entries under `mcpServers`, with your clone's absolute path, and the full path to `uv` if Desktop cannot find it (`which uv`):
+
+```json
+{
+  "mcpServers": {
+    "northstar-as-external": {
+      "command": "uv",
+      "args": ["run", "-q", "--with", "mcp<2", "--with", "duckdb", "--with", "pyyaml",
+               "python", "/ABSOLUTE/PATH/guided-analytics-playground/server.py"],
+      "env": { "ROLE": "external", "PRINCIPAL": "practice12.office@northstar.example", "PRACTICE_ID": "12" }
+    },
+    "northstar-as-csm": {
+      "command": "uv",
+      "args": ["run", "-q", "--with", "mcp<2", "--with", "duckdb", "--with", "pyyaml",
+               "python", "/ABSOLUTE/PATH/guided-analytics-playground/server.py"],
+      "env": { "ROLE": "csm", "PRINCIPAL": "csm.demo@northstar.example", "PRACTICE_ID": "all" }
+    },
+    "northstar-as-admin": {
+      "command": "uv",
+      "args": ["run", "-q", "--with", "mcp<2", "--with", "duckdb", "--with", "pyyaml",
+               "python", "/ABSOLUTE/PATH/guided-analytics-playground/server.py"],
+      "env": { "ROLE": "admin", "PRINCIPAL": "admin.demo@northstar.example", "PRACTICE_ID": "all" }
+    }
+  }
+}
+```
+
+The role comes from the config, not from a login: a local stdio server has none (see `docs/adr/0002`).
+
+**3. Add the skill and the Project.** Zip the `skill/shape-my-question` folder (the folder, not its contents) and upload it under Settings → Capabilities → Skills. Create a Project, for example "Northstar analytics", and paste `skill/project-instructions.md` into its instructions.
+
+**4. Restart Claude Desktop,** open a chat in the Project, and turn on **one** `northstar-as-*` server in the tools menu. That server is the role you are playing.
+
+| Server | Plays | Can see |
+|---|---|---|
+| `northstar-as-external` | a practice office (practice 12) | its own practice; care-gap and visit metrics; no payments |
+| `northstar-as-csm` | customer success | every practice, plus payments and membership |
+| `northstar-as-admin` | admin | everything, plus the cost and audit reports |
+
+**5. Try these, in order:**
+
+1. As **external**: *"How's Practice 12 doing?"* The skill asks three shaping questions (measures, months, grain) before any data is touched.
+2. Still **external**: *"How much were we paid in March?"* Refused, and the refusal names the policy rule.
+3. As **csm**: *"Show me member names for practice 12's open care gaps."* Refused: PHI columns are not reachable from any tool.
+4. As **csm**: *"All member-level data for every practice this year."* Priced before it runs: rows scanned, warehouse cost, estimated tokens.
+5. As **admin**: *"Show me the cost report."* Estimate versus actual for every answer so far.
+
+Menu names in Claude Desktop move between versions; if a label differs, the setting is still there. Server logs: `~/Library/Logs/Claude/mcp-server-northstar-as-*.log` on macOS. The same server also runs in Claude Code: `claude mcp add northstar -e ROLE=csm -e PRINCIPAL=csm.demo@northstar.example -e PRACTICE_ID=all -- uv run -q --with "mcp<2" --with duckdb --with pyyaml python /ABSOLUTE/PATH/guided-analytics-playground/server.py`.
+
 ## See it run
 
 A self-playing animated walkthrough of the build: 21 scenes with sound, every number captured from the server. [Watch the film](https://paullaudeman.github.io/guided-analytics-playground/film.html) (`docs/film.html`).
