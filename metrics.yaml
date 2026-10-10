@@ -1,7 +1,10 @@
 # The semantic layer: every metric defined once. An agent asks for a metric by name; it never writes SQL.
 # Changing a metric is a commit. `allowed_roles` is the lowest role that may see each grain.
-version: 2026-10-08.1
+version: 2026-10-10.1
 rate_per_1k_rows_usd: 0.0023   # stand-in for warehouse credits; dated, a drift watch
+# Priced first, above a line (10. Oct 2026, ADR 0007): get_metric refuses a question that scans more rows than this unless it
+# carries the trace id of a matching estimate_cost. Cheap questions stay one call; wide ones are always priced before they run.
+require_estimate_above_rows: 50000
 domains: [practice_performance, care_gaps, payments, membership]
 phi_columns: [member_name, dob, member_number]   # explicit deny, enforced at load: a metric whose SQL names one of these does not load
 # Policy, deny by default (ADR 0006, the IAM shape). A role may use a tool, a metric or a grain only if its statement names it.

@@ -241,6 +241,15 @@ def get_metric(metric: Metric, grain: Grain = "total", practice_id: Optional[int
         e = _find_trace(estimate_trace_id, "estimate_cost")
         if e is None or e.get("args") != args:
             return _refuse("get_metric", f"estimate_trace_id {estimate_trace_id!r} is not an estimate this principal made for these arguments", **args)
+    limit = CFG.get("require_estimate_above_rows")
+    if limit is not None and estimate_trace_id is None:   # priced first, above a line (ADR 0007): the dry-run count decides
+        try:
+            pre_rows, _ = _count(metric, grain, wheres)
+        except duckdb.Error as e:
+            return _refuse("get_metric", f"query error: {type(e).__name__}", **args)
+        if pre_rows > limit:
+            return _refuse("get_metric", f"policy: this question scans {pre_rows} rows, above the {limit}-row line; "
+                           f"call estimate_cost with the same arguments and pass its trace_id as estimate_trace_id", **args)
     sql = _sql(metric, grain, wheres)
     t0 = time.time()
     try:

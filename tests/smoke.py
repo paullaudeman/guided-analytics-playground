@@ -93,6 +93,17 @@ for v in (None, "12,13", "0", "99", "abc"):
 ok("unset or junk PRACTICE_ID refuses, never crashes", r)
 
 # ---- default deny: a role with no statement gets nothing (ADR 0006)
+# ---- priced first, above a line (ADR 0007)
+s = load("admin", "all")
+print("=== priced first, above the row line")
+wide = dict(grain="total")                      # every paid action ever: scans past the line
+r = refused(s.get_metric("actions_paid_usd", **wide), "wide, no estimate"); assert "row line" in r, r; ok("wide question without an estimate refused", r)
+e = s.estimate_cost("actions_paid_usd", **wide)
+w = answered(s.get_metric("actions_paid_usd", **wide, estimate_trace_id=e["trace_id"]), "wide, with its estimate")
+ok(f"same question with its estimate answered ({e['rows_scanned']} rows priced first)")
+n = answered(s.get_metric("attributed_members", grain="practice", month_from="2026-07", month_to="2026-09"), "narrow, no estimate")
+ok(f"narrow question needs no estimate ({n['actual']['rows_scanned']} rows)")
+
 s = load("intern", "all")
 print("=== intern (no policy statement)")
 ok("list_metrics refused", refused(s.list_metrics()))
