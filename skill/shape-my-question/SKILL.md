@@ -37,3 +37,7 @@ Read the `rule`, repeat it to the user in plain words, and offer the nearest all
 - Never compute a number yourself from rows, and never combine two metrics into a third. Cross-domain questions go to `request_capability`.
 - Never ask for member grain for an external or CSM user.
 - Never present a token figure as exact.
+
+## When the layer version moves
+
+Every answer carries `definition_changed_in` and `layer_changes_since_definition`. If the user compares with an earlier figure, or the layer version differs from one you cited before, say whether *this metric's definition* changed (compare `definition_changed_in`), and name what else moved in one line. Never infer that a number changed just because the layer version did.

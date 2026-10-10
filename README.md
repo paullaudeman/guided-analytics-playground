@@ -38,7 +38,7 @@ Evals: 20 questions (signed-pending until a person signs the file), accuracy and
 | Dimension | Here | Honest limit |
 |---|---|---|
 | **Identity and security** | principal and role on every call; row access by practice; PHI columns never exposed; read-only by construction | a local stdio server has no login; the role comes from the server's config, one Desktop entry per role. Production: an authenticated remote MCP connector |
-| **Governance** | each metric has an owner and a definition; the layer file is versioned; a deny-by-default policy names which role may use which tool, metric and grain; changing one is a commit; `request_capability` logs a request instead of granting it | approval is a human editing a file |
+| **Governance** | each metric has an owner and a definition; the layer file is versioned and carries a changelog, and every answer says in which version its definition last changed (ADR 0008); a deny-by-default policy names which role may use which tool, metric and grain; changing one is a commit; `request_capability` logs a request instead of granting it | approval is a human editing a file |
 | **Tracing** | JSONL trace per tool call with trace id, principal, SQL, rows, latency, refusal reason; the id is returned so the answer can cite it | the server sees tool calls, not the chat |
 | **Cost** | above 50.000 rows, `get_metric` refuses a question that arrives without its own estimate (ADR 0007); `estimate_cost` before any query (rows × rate, token estimate), actual cost on every `get_metric`, both on the trace; `cost_report` shows estimate versus actual per answer, per role, per metric | a local MCP server cannot see Claude's tokens; counts are estimates until the same flow runs through the Agent SDK, and every line says so |
 

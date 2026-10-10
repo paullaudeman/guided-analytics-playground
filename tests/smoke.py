@@ -93,6 +93,22 @@ for v in (None, "12,13", "0", "99", "abc"):
 ok("unset or junk PRACTICE_ID refuses, never crashes", r)
 
 # ---- default deny: a role with no statement gets nothing (ADR 0006)
+# ---- changelog (ADR 0008)
+s = load("admin", "all")
+print("=== changelog: what changed, and when")
+g = answered(s.get_metric("actions_paid_usd", grain="practice", practice_id=12), "paid, practice 12")
+assert g["definition_changed_in"] == "2026-10-07.2" and g["layer_changes_since_definition"][0]["version"] == g["version"], g
+ok(f"answer says its definition last changed in {g['definition_changed_in']}, with {len(g['layer_changes_since_definition'])} later layer changes that did not touch it")
+x = answered(s.explain_metric("visit_count"), "explain visit_count"); assert x["history"] and x["history"][0]["version"] == "2026-10-08.1", x
+ok("explain_metric carries the metric's own history")
+import subprocess, shutil, tempfile as _tf
+_d = pathlib.Path(_tf.mkdtemp(prefix="changelog-teeth-")); root = pathlib.Path(__file__).parent.parent
+shutil.copy(root / "server.py", _d); shutil.copy(root / "prices.yaml", _d); (_d / "data").symlink_to(root / "data")
+(_d / "metrics.yaml").write_text((root / "metrics.yaml").read_text().replace("version: " + g["version"], "version: 2099-01-01.1", 1))
+r = subprocess.run([sys.executable, "-c", "import server"], cwd=_d, capture_output=True, text=True, env={**os.environ, "TRACES": str(_d / "t")})
+assert r.returncode != 0 and "no changelog entry" in (r.stdout + r.stderr), (r.returncode, r.stderr[-300:])
+ok("a version bump without a changelog entry refuses to load")
+
 # ---- priced first, above a line (ADR 0007)
 s = load("admin", "all")
 print("=== priced first, above the row line")

@@ -19,6 +19,25 @@ PRINCIPAL = os.environ.get("PRINCIPAL", "demo.user")
 ROLE = os.environ.get("ROLE", "csm")
 ROLES = ["external", "csm", "analyst", "admin"]
 METRICS = CFG["metrics"]
+CHANGELOG = CFG.get("changelog") or []
+# ADR 0008: a version bump without a changelog entry does not load, so "what changed" can always be answered.
+if not CHANGELOG or str(CHANGELOG[0]["version"]) != str(CFG["version"]):
+    raise SystemExit(f"metrics.yaml: version {CFG['version']} has no changelog entry at the top; refusing to load (ADR 0008)")
+for _e in CHANGELOG:
+    for _mm in _e.get("metrics") or []:
+        if _mm not in METRICS: raise SystemExit(f"metrics.yaml changelog {_e['version']} names unknown metric '{_mm}'")
+
+def _defined_in(metric):
+    """The layer version in which this metric's definition last changed (the newest changelog entry that names it)."""
+    return next((str(e["version"]) for e in CHANGELOG if metric in (e.get("metrics") or [])), None)
+
+def _since(metric):
+    """Changelog entries newer than this metric's definition: what moved in the layer while this number stayed the same."""
+    out = []
+    for e in CHANGELOG:
+        if metric in (e.get("metrics") or []): break
+        out.append({"version": str(e["version"]), "change": e["change"]})
+    return out
 POLICY = CFG["policy"]
 Metric = Literal[tuple(METRICS.keys())]          # ADR 0001: unknown metric is a schema error
 Grain = Literal["practice", "payer", "month", "member", "total"]
@@ -185,7 +204,8 @@ def list_metrics() -> dict:
     """Every metric the layer defines, with domain, owner and unit, and which of them this role may ask for. The only numbers an agent may ask for."""
     if (r := _authorize("list_metrics")): return _refuse("list_metrics", r)
     stmt = POLICY["roles"][ROLE]
-    return {"version": CFG["version"], "metrics": {k: {"domain": v["domain"], "owner": v["owner"], "unit": v["unit"],
+    return {"version": CFG["version"], "latest_change": {"version": str(CHANGELOG[0]["version"]), "change": CHANGELOG[0]["change"]},
+            "metrics": {k: {"domain": v["domain"], "owner": v["owner"], "unit": v["unit"], "definition_changed_in": _defined_in(k),
                                                         "granted_to_you": "*" in stmt["metrics"] or k in stmt["metrics"]} for k, v in METRICS.items()},
             "grains_by_role": {g: [ro for ro in ROLES if "*" in POLICY["roles"][ro]["grains"] or g in POLICY["roles"][ro]["grains"]] for g in ("practice", "payer", "month", "member", "total")},
             "trace_id": _trace(tool="list_metrics")}
@@ -195,6 +215,8 @@ def explain_metric(metric: Metric) -> dict:
     if (r := _authorize("explain_metric", metric)): return _refuse("explain_metric", r, metric=metric)
     m = METRICS[metric]
     return {"metric": metric, **{k: m[k] for k in ("domain", "owner", "description", "unit")}, "version": CFG["version"],
+            "definition_changed_in": _defined_in(metric), "layer_changes_since_definition": _since(metric),
+            "history": [{"version": str(e["version"]), "date": str(e["date"]), "change": e["change"]} for e in CHANGELOG if metric in (e.get("metrics") or [])],
             "sql_template": m["sql"], "trace_id": _trace(tool="explain_metric", args={"metric": metric})}
 
 def _count(metric, grain, wheres):
@@ -265,6 +287,7 @@ def get_metric(metric: Metric, grain: Grain = "total", practice_id: Optional[int
     m = METRICS[metric]
     tid = _trace(tool="get_metric", args=args, shaped_question=shaped_question, sql=sql, actual=actual, estimate_trace_id=estimate_trace_id)
     return {"metric": metric, "value": values, "unit": m["unit"], "definition": m["description"], "owner": m["owner"], "version": CFG["version"],
+            "definition_changed_in": _defined_in(metric), "layer_changes_since_definition": _since(metric),
             "window": {"from": month_from, "to": month_to}, "filters": {"practice_id": practice_id, "payer": payer, "measure": measure},
             "actual": actual, "estimate_trace_id": estimate_trace_id, "trace_id": tid, "cite_as": f"{metric} v{CFG['version']} · trace {tid}"}
 

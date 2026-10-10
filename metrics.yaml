@@ -5,6 +5,25 @@ rate_per_1k_rows_usd: 0.0023   # stand-in for warehouse credits; dated, a drift 
 # Priced first, above a line (10. Oct 2026, ADR 0007): get_metric refuses a question that scans more rows than this unless it
 # carries the trace id of a matching estimate_cost. Cheap questions stay one call; wide ones are always priced before they run.
 require_estimate_above_rows: 50000
+# Changelog (10. Oct 2026, ADR 0008): newest first; the first entry must name the current version or the server refuses to
+# load. `metrics` lists the definitions an entry changed; an empty list means policy or plumbing only, no number moved.
+changelog:
+  - version: 2026-10-10.1
+    date: 2026-10-10
+    change: "Policy: get_metric requires a matching estimate above 50.000 rows scanned (ADR 0007). No definition changed."
+    metrics: []
+  - version: 2026-10-08.1
+    date: 2026-10-08
+    change: "Added visit_count and visit_closure_rate on a second fact table (one row per visit). Deny-by-default policy per role and the grain list (ADR 0006). Existing definitions unchanged."
+    metrics: [visit_count, visit_closure_rate]
+  - version: 2026-10-07.2
+    date: 2026-10-07
+    change: "actions_paid_usd: payments joined to distinct action ids, so a double-submitted action is paid once. The Tier 1 evals caught the duplicate join."
+    metrics: [actions_paid_usd]
+  - version: 2026-10-07.1
+    date: 2026-10-07
+    change: "First layer: care_gaps_open, care_gaps_closed, gap_closure_rate, actions_paid_usd, attributed_members."
+    metrics: [care_gaps_open, care_gaps_closed, gap_closure_rate, actions_paid_usd, attributed_members]
 domains: [practice_performance, care_gaps, payments, membership]
 phi_columns: [member_name, dob, member_number]   # explicit deny, enforced at load: a metric whose SQL names one of these does not load
 # Policy, deny by default (ADR 0006, the IAM shape). A role may use a tool, a metric or a grain only if its statement names it.
