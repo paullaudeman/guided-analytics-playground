@@ -42,6 +42,28 @@ Evals: 20 questions (signed-pending until a person signs the file), accuracy and
 | **Tracing** | JSONL trace per tool call with trace id, principal, SQL, rows, latency, refusal reason; the id is returned so the answer can cite it | the server sees tool calls, not the chat |
 | **Cost** | above 50.000 rows, `get_metric` refuses a question that arrives without its own estimate (ADR 0007); `estimate_cost` before any query (rows × rate, token estimate), actual cost on every `get_metric`, both on the trace; `cost_report` shows estimate versus actual per answer, per role, per metric | a local MCP server cannot see Claude's tokens; counts are estimates until the same flow runs through the Agent SDK, and every line says so |
 
+## See it work
+
+A live run in Claude Desktop, as the `admin` role.
+
+![Shaping before querying](docs/assets/screens/01-shaping.png)
+
+**1. It shapes the question before it touches data.** "How many members did my largest practice enroll last quarter?" has no defined metric behind "enroll", so the skill names the closest one, its owner and what it actually counts, refuses to derive "new joiners" by subtracting quarters, and asks what "largest", "my" and "last quarter" mean.
+
+![The shaped question as typed fields](docs/assets/screens/02-typed-fields.png)
+
+**2. The shaped question is typed fields, not SQL.** Metric, grain and months are enum and string arguments to `estimate_cost`, with the shaped question written out for the trace. The agent never writes a query.
+
+![The answer with its receipt](docs/assets/screens/03-answer-with-receipt.png)
+
+**3. The answer carries its receipt.** Definition, owner, version, filters, estimated and actual warehouse cost, and two caveats the agent raised on its own (a narrow lead; "500 is a very round number", which in this synthetic data is a coincidence). The model cost shown here, $0.047, was priced from an out-of-date placeholder table; the run surfaced it and `prices.yaml` now carries current model prices.
+
+![Health check and changelog in one answer](docs/assets/screens/04-health-and-changelog.png)
+
+**4. It checks its own versions and says what changed.** The first call reports that the server is older than the code on disk and how to fix it (ADR 0009), and the answer says in which version this metric's definition last changed and that only a policy rule moved since (ADR 0008).
+
+Using it for an afternoon produced three changes, each with a decision record and tests: wide questions must be priced first (ADR 0007), the layer carries a changelog (ADR 0008), and the first call checks the versions (ADR 0009).
+
 ## Run it in Claude Desktop
 
 You need macOS or Windows with [Claude Desktop](https://claude.ai/download), and [uv](https://docs.astral.sh/uv/) (it fetches Python and the three dependencies on first run).
