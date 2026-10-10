@@ -1,0 +1,74 @@
+# The semantic layer: every metric defined once. An agent asks for a metric by name; it never writes SQL.
+# Changing a metric is a commit. `allowed_roles` is the lowest role that may see each grain.
+version: 2026-10-08.1
+rate_per_1k_rows_usd: 0.0023   # stand-in for warehouse credits; dated, a drift watch
+domains: [practice_performance, care_gaps, payments, membership]
+phi_columns: [member_name, dob, member_number]   # explicit deny, enforced at load: a metric whose SQL names one of these does not load
+# Policy, deny by default (ADR 0006, the IAM shape). A role may use a tool, a metric or a grain only if its statement names it.
+# "*" is a deliberate grant of everything. A role with no statement has nothing. Scope (which rows) is a separate axis: PRACTICE_ID.
+policy:
+  default: deny
+  roles:
+    external:                                  # a practice office: its own practice, care-gap metrics, no money, no member rows
+      tools:   [whoami, list_metrics, explain_metric, estimate_cost, get_metric, practice_scorecard, request_capability, record_answer]
+      metrics: [care_gaps_open, care_gaps_closed, gap_closure_rate, visit_count, visit_closure_rate]
+      grains:  [total, practice, month]
+      trace_scope: [own]
+    csm:                                       # customer success: every practice, payments and membership, payer grain, no member rows
+      tools:   [whoami, list_metrics, explain_metric, estimate_cost, get_metric, practice_scorecard, request_capability, record_answer, cost_report]
+      metrics: [care_gaps_open, care_gaps_closed, gap_closure_rate, actions_paid_usd, attributed_members, visit_count, visit_closure_rate]
+      grains:  [total, practice, payer, month]
+      trace_scope: [own]
+    analyst:                                   # member grain is PHI-adjacent: analyst and above only
+      tools:   [whoami, list_metrics, explain_metric, estimate_cost, get_metric, practice_scorecard, request_capability, record_answer, cost_report]
+      metrics: ["*"]
+      grains:  [total, practice, payer, month, member]
+      trace_scope: [own]
+    admin:
+      tools:   ["*"]
+      metrics: ["*"]
+      grains:  ["*"]
+      trace_scope: ["*"]                       # cost_report and audit_log across every principal
+metrics:
+  care_gaps_open:
+    domain: care_gaps
+    owner: Head of Quality
+    description: Count of care actions with status 'open' in the window, deduplicated on action_id.
+    sql: "SELECT COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open' {where}"
+    unit: actions
+  care_gaps_closed:
+    domain: care_gaps
+    owner: Head of Quality
+    description: Count of care actions with status 'completed' in the window, deduplicated on action_id.
+    sql: "SELECT COUNT(DISTINCT action_id) AS value FROM actions WHERE status='completed' {where}"
+    unit: actions
+  gap_closure_rate:
+    domain: practice_performance
+    owner: VP Analytics
+    description: Completed actions divided by all actions in the window, deduplicated on action_id. The number a payer sees.
+    sql: "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1 {where}"
+    unit: ratio
+  actions_paid_usd:
+    domain: payments
+    owner: Finance
+    description: Sum of payments by paid_month (the month the payment run happened, not the action month). Joined to actions deduplicated on action_id; a double-submitted action is paid once.
+    sql: "SELECT ROUND(COALESCE(SUM(amount),0),2) AS value FROM payments p JOIN (SELECT DISTINCT action_id, member_id, practice_id, measure FROM actions) a USING(action_id) WHERE 1=1 {where_pay}"
+    unit: usd
+  visit_count:
+    domain: practice_performance
+    owner: VP Analytics
+    description: Count of visits in the window, one row per visit, deduplicated on visit_id. Visits are counted at the practice where they happened, attributed or not.
+    sql: "SELECT COUNT(DISTINCT v.visit_id) AS value FROM visits v WHERE 1=1 {where_visits}"
+    unit: visits
+  visit_closure_rate:
+    domain: practice_performance
+    owner: VP Analytics
+    description: Share of visits where the same member had a completed care action at the same practice in the same month. Joined on member, practice and month, so a walk-in at another practice does not borrow that practice's actions; actions deduplicated on action_id.
+    sql: "SELECT ROUND(COUNT(DISTINCT v.visit_id) FILTER (WHERE a.member_id IS NOT NULL) * 1.0 / NULLIF(COUNT(DISTINCT v.visit_id),0), 4) AS value FROM visits v LEFT JOIN (SELECT DISTINCT member_id, practice_id, date_trunc('month', action_date) AS m FROM actions WHERE status='completed') a ON a.member_id=v.member_id AND a.practice_id=v.practice_id AND a.m=date_trunc('month', v.visit_date) WHERE 1=1 {where_visits}"
+    unit: ratio
+  attributed_members:
+    domain: membership
+    owner: Head of Network
+    description: Distinct members attributed to a practice in the window. A member attributed to two practices counts once per practice.
+    sql: "SELECT COUNT(DISTINCT member_id) AS value FROM attribution WHERE 1=1 {where_attr}"
+    unit: members

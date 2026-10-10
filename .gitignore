@@ -1,0 +1,9 @@
+*.duckdb
+traces/*.jsonl
+.venv/
+__pycache__/
+.DS_Store
+*.html
+evals/traces/
+
+!docs/film.html

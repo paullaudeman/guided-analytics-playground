@@ -1,0 +1,335 @@
+{
+ "version": "2026-10-08.1",
+ "signed": false,
+ "questions": [
+  {
+   "id": "q01",
+   "question": "How many open care gaps does Practice 12 have, 2026-07 to 2026-09?",
+   "metric": "care_gaps_open",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 275,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='open' AND practice_id=12 AND action_date>=DATE '2026-07-01' AND action_date<DATE '2026-09-01'+INTERVAL 1 MONTH",
+   "note": "dedup on action_id: the 60 duplicated rows must not count twice",
+   "signed_by": ""
+  },
+  {
+   "id": "q02",
+   "question": "How many open care gaps does Practice 03 have, 2026-01 to 2026-03?",
+   "metric": "care_gaps_open",
+   "args": {
+    "practice_id": 3,
+    "month_from": "2026-01",
+    "month_to": "2026-03"
+   },
+   "expected": 421,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='open' AND practice_id=3 AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-03-01'+INTERVAL 1 MONTH",
+   "note": "dedup on action_id: the 60 duplicated rows must not count twice",
+   "signed_by": ""
+  },
+  {
+   "id": "q03",
+   "question": "How many open care gaps does Practice 07 have, 2026-06 to 2026-06?",
+   "metric": "care_gaps_open",
+   "args": {
+    "practice_id": 7,
+    "month_from": "2026-06",
+    "month_to": "2026-06"
+   },
+   "expected": 0,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='open' AND practice_id=7 AND action_date>=DATE '2026-06-01' AND action_date<DATE '2026-06-01'+INTERVAL 1 MONTH",
+   "note": "Practice 07 in June is the no-actions trap: expected 0, not an error",
+   "signed_by": ""
+  },
+  {
+   "id": "q04",
+   "question": "Open A1C gaps for Practice 12, 2026-07 to 2026-09",
+   "metric": "care_gaps_open",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": "A1C"
+   },
+   "expected": 47,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='open' AND practice_id=12 AND measure='A1C' AND action_date>=DATE '2026-07-01' AND action_date<DATE '2026-09-01'+INTERVAL 1 MONTH",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q05",
+   "question": "Open AWV gaps for Practice 05, 2026-01 to 2026-09",
+   "metric": "care_gaps_open",
+   "args": {
+    "practice_id": 5,
+    "month_from": "2026-01",
+    "month_to": "2026-09",
+    "measure": "AWV"
+   },
+   "expected": 161,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='open' AND practice_id=5 AND measure='AWV' AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-09-01'+INTERVAL 1 MONTH",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q06",
+   "question": "Gap closure rate for Practice 12, 2026-07 to 2026-09",
+   "metric": "gap_closure_rate",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 0.6995,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id=12 AND action_date>=DATE '2026-07-01' AND action_date<DATE '2026-09-01'+INTERVAL 1 MONTH",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q07",
+   "question": "Gap closure rate for Practice 01, 2026-01 to 2026-09",
+   "metric": "gap_closure_rate",
+   "args": {
+    "practice_id": 1,
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 0.7133,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id=1 AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-09-01'+INTERVAL 1 MONTH",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q08",
+   "question": "Gap closure rate across Blue Harbor Health practices, Jan to Sep 2026",
+   "metric": "gap_closure_rate",
+   "args": {
+    "payer": "Blue Harbor Health",
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 0.719,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id IN (SELECT practice_id FROM practices WHERE payer='Blue Harbor Health') AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-10-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q09",
+   "question": "Gap closure rate across Meridian Plan practices, Jan to Sep 2026",
+   "metric": "gap_closure_rate",
+   "args": {
+    "payer": "Meridian Plan",
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 0.7163,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id IN (SELECT practice_id FROM practices WHERE payer='Meridian Plan') AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-10-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q10",
+   "question": "Gap closure rate across Cascade Mutual practices, Jan to Sep 2026",
+   "metric": "gap_closure_rate",
+   "args": {
+    "payer": "Cascade Mutual",
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 0.7221,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id IN (SELECT practice_id FROM practices WHERE payer='Cascade Mutual') AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-10-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q11",
+   "question": "How much was Practice 03 paid in 2026-04?",
+   "metric": "actions_paid_usd",
+   "args": {
+    "practice_id": 3,
+    "month_from": "2026-04",
+    "month_to": "2026-04"
+   },
+   "expected": 4837.5,
+   "independent_sql": "SELECT ROUND(COALESCE(sum(amount),0),2) FROM payments WHERE practice_id=3 AND paid_month=DATE '2026-04-01'",
+   "note": "paid_month, not action month: April is low and May is high because half of April's run landed in May",
+   "signed_by": ""
+  },
+  {
+   "id": "q12",
+   "question": "How much was Practice 03 paid in 2026-05?",
+   "metric": "actions_paid_usd",
+   "args": {
+    "practice_id": 3,
+    "month_from": "2026-05",
+    "month_to": "2026-05"
+   },
+   "expected": 15399.0,
+   "independent_sql": "SELECT ROUND(COALESCE(sum(amount),0),2) FROM payments WHERE practice_id=3 AND paid_month=DATE '2026-05-01'",
+   "note": "paid_month, not action month: April is low and May is high because half of April's run landed in May",
+   "signed_by": ""
+  },
+  {
+   "id": "q13",
+   "question": "How much was Practice 12 paid in 2026-08?",
+   "metric": "actions_paid_usd",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-08",
+    "month_to": "2026-08"
+   },
+   "expected": 5928.0,
+   "independent_sql": "SELECT ROUND(COALESCE(sum(amount),0),2) FROM payments WHERE practice_id=12 AND paid_month=DATE '2026-08-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q14",
+   "question": "Total paid to all practices, Jan to Sep 2026",
+   "metric": "actions_paid_usd",
+   "args": {
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 1654002.0,
+   "independent_sql": "SELECT ROUND(COALESCE(sum(amount),0),2) FROM payments WHERE paid_month>=DATE '2026-01-01' AND paid_month<=DATE '2026-09-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q15",
+   "question": "Attributed members at Practice 12, 2026-03 to 2026-03",
+   "metric": "attributed_members",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-03",
+    "month_to": "2026-03"
+   },
+   "expected": 286,
+   "independent_sql": "SELECT count(DISTINCT member_id) FROM attribution WHERE practice_id=12 AND month>=DATE '2026-03-01' AND month<=DATE '2026-03-01'",
+   "note": "March carries the double-attribution trap; a member attributed to two practices counts once per practice",
+   "signed_by": ""
+  },
+  {
+   "id": "q16",
+   "question": "Attributed members at Practice 12, 2026-07 to 2026-09",
+   "metric": "attributed_members",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 285,
+   "independent_sql": "SELECT count(DISTINCT member_id) FROM attribution WHERE practice_id=12 AND month>=DATE '2026-07-01' AND month<=DATE '2026-09-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q17",
+   "question": "Attributed members at Practice 20, 2026-01 to 2026-09",
+   "metric": "attributed_members",
+   "args": {
+    "practice_id": 20,
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 466,
+   "independent_sql": "SELECT count(DISTINCT member_id) FROM attribution WHERE practice_id=20 AND month>=DATE '2026-01-01' AND month<=DATE '2026-09-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q18",
+   "question": "Closed care gaps across all practices, Q3 2026",
+   "metric": "care_gaps_closed",
+   "args": {
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 19144,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='completed' AND action_date>=DATE '2026-07-01' AND action_date<DATE '2026-10-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q19",
+   "question": "Closed SDOH screens, Cascade Mutual practices, all year",
+   "metric": "care_gaps_closed",
+   "args": {
+    "payer": "Cascade Mutual",
+    "measure": "SDOH",
+    "month_from": "2026-01",
+    "month_to": "2026-09"
+   },
+   "expected": 2259,
+   "independent_sql": "SELECT count(DISTINCT action_id) FROM actions WHERE status='completed' AND measure='SDOH' AND practice_id IN (SELECT practice_id FROM practices WHERE payer='Cascade Mutual') AND action_date>=DATE '2026-01-01' AND action_date<DATE '2026-10-01'",
+   "note": "",
+   "signed_by": ""
+  },
+  {
+   "id": "q20",
+   "question": "Gap closure rate, Practice 12, Q3, asked a second way (same expected value as q06)",
+   "metric": "gap_closure_rate",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "expected": 0.6995,
+   "independent_sql": "SELECT ROUND(count(DISTINCT CASE WHEN status='completed' THEN action_id END)*1.0/NULLIF(count(DISTINCT action_id),0),4) FROM actions WHERE practice_id=12 AND action_date>=DATE '2026-07-01' AND action_date<DATE '2026-10-01'",
+   "note": "the same-number-twice demonstration",
+   "signed_by": ""
+  },
+  {
+   "id": "q21",
+   "question": "How many visits did Practice 12 have, Q3 2026?",
+   "metric": "visit_count",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 705,
+   "independent_sql": "SELECT count(*) FROM visits WHERE practice_id=12 AND visit_date>=DATE '2026-07-01' AND visit_date<DATE '2026-10-01'",
+   "note": "counted where the visit happened; walk-ins count at the practice visited",
+   "signed_by": ""
+  },
+  {
+   "id": "q22",
+   "question": "Share of Practice 12's Q3 visits where the member had a completed action there that month",
+   "metric": "visit_closure_rate",
+   "args": {
+    "practice_id": 12,
+    "month_from": "2026-07",
+    "month_to": "2026-09"
+   },
+   "expected": 0.5121,
+   "independent_sql": "SELECT ROUND(sum(CASE WHEN EXISTS (SELECT 1 FROM actions a WHERE a.status='completed' AND a.member_id=v.member_id AND a.practice_id=v.practice_id AND date_trunc('month', a.action_date)=date_trunc('month', v.visit_date)) THEN 1 ELSE 0 END)*1.0/count(*),4) FROM visits v WHERE v.practice_id=12 AND v.visit_date>=DATE '2026-07-01' AND v.visit_date<DATE '2026-10-01'",
+   "note": "join key is member + practice + month; a join on member alone would let a walk-in borrow another practice's completed actions",
+   "signed_by": ""
+  },
+  {
+   "id": "q23",
+   "question": "Practice 12 scorecard, as of 2026-09: the quarter-to-date gap closure rate must be the Q3 rate",
+   "tool": "practice_scorecard",
+   "metric": "gap_closure_rate",
+   "args": {
+    "practice_id": 12,
+    "as_of": "2026-09"
+   },
+   "pick": [
+    "signals",
+    "gap_closure_rate_qtd",
+    "value"
+   ],
+   "expected": 0.6995,
+   "independent_sql": "same as q06; the eval pins the default window, not the metric",
+   "note": "the scorecard's defaults are a contract: quarter to date from the as-of month",
+   "signed_by": ""
+  }
+ ]
+}

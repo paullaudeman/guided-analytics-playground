@@ -1,0 +1,8 @@
+# Model prices used to estimate the model cost of an answer. Hand-filled; the date is shown on every report.
+# These are placeholders for the playground, not a quote of any vendor's live price list. Update and re-date before use.
+as_of: 2026-10-07
+models:
+  claude-sonnet:   { input_per_mtok_usd: 3.00,  output_per_mtok_usd: 15.00 }
+  claude-opus:     { input_per_mtok_usd: 15.00, output_per_mtok_usd: 75.00 }
+  claude-haiku:    { input_per_mtok_usd: 0.80,  output_per_mtok_usd: 4.00 }
+default_model: claude-sonnet

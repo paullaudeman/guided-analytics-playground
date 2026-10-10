@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Governed analytics · see it run</title>
+<style>
+/* Bauhaus pass (27. Sep 2026): laudeman.io's tokens - paper, ink, rust, Jost 900, square corners,
+   hard offset shadows, dusted paper. Fonts are local files: no network, no Google, same render every run. */
+@font-face{font-family:"Jost";font-weight:400;src:url(assets/fonts/jost-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Jost";font-weight:500;src:url(assets/fonts/jost-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Jost";font-weight:700;src:url(assets/fonts/jost-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Jost";font-weight:900;src:url(assets/fonts/jost-latin-900-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;src:url(assets/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url(assets/fonts/ibm-plex-mono-latin-600-normal.woff2) format("woff2")}
+:root{
+  --paper:#f2eee5; --ink:#141414; --rust:#b5462f; --rust-lt:#e07a5f; --slate:#4a4640; --hair:#cfc8ba;
+  --bg:var(--paper); --card:var(--paper); --muted:var(--slate); --line:var(--hair);
+  /* the old semantic colors collapse into three: good is solid ink, risk is rust, "meh" is hatched ink */
+  --sage:var(--ink); --warn:var(--rust); --clay:var(--rust); --clay-deep:var(--rust);
+  --gold:repeating-linear-gradient(135deg,var(--ink) 0 3px,transparent 3px 8px);
+  --shadow-sm:3px 3px 0 var(--ink); --shadow:5px 5px 0 var(--ink); --shadow-rust:9px 9px 0 var(--rust);
+  --sans:"Jost","Futura","Avenir Next",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --grain:url(assets/paper-dust.png),url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%27300%27%3E%3Cfilter id=%27m%27 x=%270%27 y=%270%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%27.8%27 numOctaves=%273%27 seed=%273%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix values=%270 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .22 0 0 0 .05 0%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url%28%23m%29%27/%3E%3C/svg%3E");
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background-color:var(--paper);background-image:var(--grain);background-size:300px 300px;color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+
+.stage{position:relative;height:100%;display:flex;flex-direction:column;max-width:980px;margin:0 auto}
+.bars{display:flex;gap:3px;padding:14px 18px 0}
+.bar{flex:1;height:6px;background:var(--hair);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--rust)}
+.mark{display:flex;justify-content:space-between;align-items:center;margin:12px clamp(18px,5vw,56px) 0;padding-bottom:8px;border-bottom:3px solid var(--ink);font-weight:900;font-size:13px;letter-spacing:1.5px;text-transform:uppercase}
+.mark b{display:inline-block;width:12px;height:12px;background:var(--rust);margin-right:8px;vertical-align:-1px}
+.mark span:last-child{font-weight:500;color:var(--slate)}
+
+.screen{position:relative;flex:1;overflow:hidden}
+.scene{position:absolute;inset:0;padding:14px clamp(18px,5vw,56px);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:clamp(10px,2vh,18px);visibility:hidden}
+.scene.active{visibility:visible}
+
+/* motion: a hard left-to-right wipe, not a soft rise. The clip box is grown by 24px so hard shadows survive it. */
+.in{opacity:0}
+.scene.active .in{animation:rise .55s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s)}
+@keyframes rise{from{opacity:1;clip-path:inset(-24px 100% -24px -24px)}to{opacity:1;clip-path:inset(-24px -24px -24px -24px)}}
+.paused *{animation-play-state:paused!important}
+
+h1,h2{font-family:var(--sans);font-weight:900;margin:0;letter-spacing:-.03em;line-height:.98;max-width:22ch}
+h1{font-size:clamp(44px,9vw,96px);text-transform:uppercase;letter-spacing:-.045em;line-height:.88}
+h2{font-size:clamp(26px,4.4vw,44px)}
+.sub{font-size:clamp(15px,2.1vw,19px);color:var(--slate);max-width:46ch;line-height:1.4;margin:0}
+.tiny{font-size:13px;color:var(--slate);line-height:1.4;max-width:64ch;margin:0}
+.eyebrow{margin:0;color:var(--rust);text-transform:uppercase;letter-spacing:1.4px;font-size:14px;font-weight:700}
+/* section numeral, as on the site: big rust figure, label beside it */
+.kick{display:flex;align-items:baseline;gap:14px;margin:0}
+.kick b{color:var(--rust);font-weight:900;font-size:60px;letter-spacing:-2px;line-height:.8}
+.kick span{text-transform:uppercase;letter-spacing:1.5px;font-weight:700;font-size:14px;border-bottom:3px solid var(--ink);padding-bottom:4px}
+
+.term{background:var(--ink);color:var(--paper);padding:14px 18px;font-family:var(--mono);font-size:clamp(11.5px,1.75vw,14px);line-height:1.65;max-width:680px;width:100%;box-shadow:var(--shadow-rust)}
+.term .p{color:var(--rust-lt);font-weight:600}
+.term .dim{color:#a39d92}
+.term .ok{color:var(--paper);font-weight:600}
+.term .bad{background:var(--rust);color:var(--paper);padding:0 4px}
+.term a{color:var(--rust-lt)}
+.caret::after{content:"█";color:var(--rust-lt);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* the portrait, framed like the site hero: rust square behind, ink circle in front, the three assemble in turn */
+.ph{position:relative;flex:none;width:var(--s,180px);aspect-ratio:1}
+.ph .sq{position:absolute;right:-8%;top:-8%;width:58%;height:58%;background:var(--rust)}
+.ph .ci{position:absolute;left:-10%;bottom:-10%;width:30%;height:30%;border-radius:50%;background:var(--ink);z-index:2}
+.ph img{position:relative;display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;filter:grayscale(1) contrast(1.05) drop-shadow(7px 7px 0 var(--ink))}
+.ph > *{opacity:0}
+.scene.active .ph .sq,.start .ph .sq{animation:fromR .5s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s)}
+.scene.active .ph img,.start .ph img{animation:grow .55s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s + .2s)}
+.scene.active .ph .ci,.start .ph .ci{animation:fromL .5s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s + .45s)}
+@keyframes fromR{from{opacity:1;transform:translateX(140%)}to{opacity:1;transform:none}}
+@keyframes fromL{from{opacity:1;transform:translate(-160%,0)}to{opacity:1;transform:none}}
+@keyframes grow{from{opacity:1;transform:scale(0)}to{opacity:1;transform:none}}
+
+.bubble{position:relative;display:inline-block;background:var(--paper);border:3px solid var(--ink);padding:6px 14px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px;box-shadow:var(--shadow-sm)}
+.bubble::after{content:"";position:absolute;left:-3px;bottom:-17px;border-left:16px solid var(--ink);border-bottom:14px solid transparent}
+.row{display:flex;align-items:center;gap:clamp(24px,5vw,56px);flex-wrap:wrap}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;max-width:680px}
+.chip{border:2px solid var(--ink);background:var(--paper);padding:4px 10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+.thesis{font-size:clamp(46px,10vw,112px);max-width:none;margin-bottom:18px}
+.under{position:relative;white-space:nowrap;color:var(--rust)}
+.under::after{content:"";position:absolute;left:0;right:0;bottom:.12em;height:.07em;background:var(--ink);transform:scaleX(0);transform-origin:left}
+.scene.active .under::after{animation:bar .6s cubic-bezier(.7,0,.2,1) forwards 1s}
+@keyframes bar{to{transform:none}}
+
+.gr{display:grid;gap:14px;max-width:680px;width:100%}
+.req{background:var(--paper);border:3px solid var(--ink);padding:12px 16px;box-shadow:var(--shadow)}
+.req-top{display:flex;justify-content:space-between;gap:10px;font-size:16px;font-weight:700}
+.score{font-family:var(--mono);font-weight:600}
+.meter{height:12px;border:2px solid var(--ink);margin:10px 0 8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0}
+.scene.active .meter i{animation:fill 1.1s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d) * 1s)}
+@keyframes fill{to{width:var(--w)}}
+.verdict{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.lo i{background:var(--ink)} .lo .verdict{color:var(--ink)}
+.hi i{background:var(--rust)} .hi .verdict{color:var(--rust)}
+.gate{display:inline-flex;align-items:center;gap:6px;background:var(--rust);color:var(--paper);padding:2px 8px;margin-right:6px}
+
+.log .l{opacity:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scene.active .log .l{animation:rise .4s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d) * 1s)}
+.hash{color:var(--rust-lt)}
+
+.cost{display:grid;gap:10px;max-width:680px;width:100%}
+.cost-row{display:grid;grid-template-columns:minmax(96px,180px) 1fr;align-items:center;gap:12px;font-size:14px;font-weight:500}
+.track{height:28px;border:2px solid var(--ink);background:var(--paper);position:relative;overflow:hidden}
+.track i{position:absolute;inset:0 auto 0 0;width:0}
+.scene.active .track i{animation:fill 1.2s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d) * 1s)}
+.track b{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;font-weight:600;opacity:0}
+.scene.active .track b{animation:rise .4s forwards;animation-delay:calc(var(--d) * 1s + 1.1s)}
+.stamp{justify-self:start;background:var(--rust);color:var(--paper);font-weight:900;text-transform:uppercase;letter-spacing:1.5px;padding:4px 14px;box-shadow:var(--shadow-sm)}
+.note{font-size:clamp(17px,2.4vw,21px);font-weight:700;line-height:1.3;max-width:40ch;border-left:6px solid var(--rust);padding-left:16px;margin:0}
+
+.doors{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:15px;font-weight:500}
+.door{background:var(--paper);border:3px solid var(--ink);padding:8px 12px;box-shadow:var(--shadow-sm)}
+.door b{font-family:var(--mono)}
+.up b{color:var(--rust)} .door.down{background:var(--ink);color:var(--paper)}
+.flow{color:var(--rust);font-weight:900;line-height:1}
+
+.arch{display:grid;gap:8px;max-width:560px;width:100%;font-family:var(--mono);font-size:13px;text-align:center}
+.node{background:var(--paper);border:3px solid var(--ink);padding:8px}
+.node.port{border-color:var(--rust);color:var(--rust);font-weight:600}
+.adapters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.adapter{background:var(--paper);border:3px solid var(--ink);padding:8px 4px}
+.scene.active .adapter{animation:swap 6s steps(1) infinite;animation-delay:calc(var(--d) * 1s)}
+@keyframes swap{0%{background:var(--rust);color:var(--paper);border-color:var(--rust)}34%,100%{background:var(--paper);color:var(--ink);border-color:var(--ink)}}
+.hyp{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:15px;font-weight:500}
+.hyp li::before{content:"";display:inline-block;width:9px;height:9px;background:var(--rust);margin-right:10px}
+
+.chain{display:grid;gap:6px;max-width:480px;width:100%}
+.link{background:var(--paper);border:3px solid var(--ink);padding:8px 14px;display:flex;flex-direction:column}
+.link b{font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.02em}
+.link b i{font-style:normal;color:var(--rust);margin-right:8px}
+.link span{font-size:13px;color:var(--slate)}
+.link.final{background:var(--ink);color:var(--paper);border-color:var(--ink);box-shadow:var(--shadow-rust)}
+.link.final span{color:#cfc8ba} .link.final b i{color:var(--rust-lt)}
+/* the four-step chain runs across, left to right, so the scene fits the frame */
+.chain.across{grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;max-width:none;align-items:stretch;gap:8px}
+.chain.across .arrow{align-self:center;font-size:20px}
+.chain .arrow{text-align:center;color:var(--rust);font-weight:900;line-height:1;font-size:15px}
+.was{font-size:clamp(20px,3.2vw,30px);font-weight:500;color:var(--slate);margin:0}
+.strike{background:linear-gradient(var(--rust),var(--rust)) no-repeat 0 55%/0 5px}
+.scene.active .strike{animation:strike .6s cubic-bezier(.7,0,.2,1) forwards 2s}
+@keyframes strike{to{background-size:100% 5px}}
+@media (prefers-reduced-motion: reduce){.strike{background-size:100% 5px!important;animation:none!important}}
+.build{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;max-width:740px;width:100%}
+.verdict-line{margin:0;font-weight:900;font-size:clamp(18px,2.4vw,22px);text-decoration:underline;text-decoration-color:var(--rust);text-decoration-thickness:4px;text-underline-offset:6px}
+/* the so-what beside the last tile: black boxes, rust ticks, echoing the intro's "approvals on · decision log on · cost meter on" */
+.checks{grid-column:span 2;align-self:center;display:grid;gap:10px;padding-left:10px}
+.checks__lead{margin:0;font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--slate)}
+.check{margin:0;display:flex;align-items:center;gap:14px;font-family:var(--mono);font-weight:600;font-size:17px}
+.check i{flex:none;position:relative;width:26px;height:26px;background:var(--ink)}
+.check i::after{content:"";position:absolute;left:8px;top:3px;width:8px;height:14px;border:solid var(--rust);border-width:0 4px 4px 0;transform:rotate(45deg)}
+.tile{background:var(--paper);border:3px solid var(--ink);padding:12px 16px;box-shadow:var(--shadow)}
+.tile strong{display:block;font-weight:900;letter-spacing:-.04em;font-size:clamp(28px,4.4vw,42px);color:var(--rust);line-height:1.05}
+.tile span{font-size:14px;color:var(--slate);line-height:1.4}
+
+.gl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px}
+.gl .k{color:var(--rust-lt);font-weight:600}
+
+/* the sign-off: the one-pager's footer line, as the video's last word */
+.sign{margin:6px 0 0;padding-top:10px;border-top:3px solid var(--ink);max-width:680px;width:100%;font-weight:900;font-size:clamp(18px,2.6vw,24px);letter-spacing:-.01em;text-transform:uppercase}
+.sign b{display:block;color:var(--rust);font-weight:900}
+
+/* certificates: the three Bauhaus primitives, one per issuer; the top one is the square turned 45 degrees on an inverted ink card */
+.badges{display:grid;gap:12px;max-width:660px;width:100%}
+.badge{display:flex;gap:16px;align-items:center;background:var(--paper);border:3px solid var(--ink);padding:12px 16px;box-shadow:var(--shadow)}
+.seal{flex:none;width:44px;height:44px;display:grid;place-items:center;color:var(--paper);font-weight:900;font-size:18px}
+.seal.circle{border-radius:50%;background:var(--rust)}
+.seal.square{background:var(--ink)}
+.seal.tri{background:var(--rust);clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:14px;font-size:15px}
+.badge p{margin:0;font-size:15px;font-weight:700;line-height:1.35}
+.badge small{color:var(--slate);font-size:13px;font-weight:400}
+.new{box-shadow:var(--shadow-rust)}
+.badge.top{background:var(--ink);color:var(--paper);padding:18px 18px;margin-bottom:8px}
+.badge.top p{font-size:21px;font-weight:900;letter-spacing:-.01em;text-transform:uppercase;line-height:1.15}
+.badge.top small{display:block;margin-top:5px;color:#cfc8ba;font-size:13px;font-weight:500;letter-spacing:.08em}
+.seal.diamond{width:36px;height:36px;margin:0 4px;background:var(--rust-lt);color:var(--ink);transform:rotate(45deg)}
+.seal.diamond span{transform:rotate(-45deg)}
+.new .tag{margin-left:auto;flex:none;background:var(--rust);color:var(--paper);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px}
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.confetti span{position:absolute;top:-30px;animation:fall cubic-bezier(.5,0,.8,1) forwards}
+@keyframes fall{to{transform:translateY(115vh) rotate(360deg)}}
+
+.stage:not(.started) .controls{visibility:hidden}
+.controls{display:flex;justify-content:center;gap:10px;padding:10px 18px 16px}
+.controls button{font:700 13px var(--sans);text-transform:uppercase;letter-spacing:.08em;color:var(--ink);background:var(--paper);border:2px solid var(--ink);padding:8px 14px;cursor:pointer;min-width:44px;box-shadow:var(--shadow-sm)}
+button:focus-visible{outline:3px solid var(--rust);outline-offset:3px}
+.btn{font:700 15px var(--sans);text-transform:uppercase;letter-spacing:.08em;background:var(--ink);color:var(--paper);border:0;padding:13px 24px;cursor:pointer;box-shadow:var(--shadow-rust)}
+.btn:active{transform:translate(5px,5px);box-shadow:none}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink);font-size:13px;padding:10px 18px;box-shadow:var(--shadow-sm)}
+a{color:var(--rust)}
+
+.start{position:absolute;inset:0;z-index:5;background-color:var(--paper);background-image:var(--grain);background-size:300px 300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px}
+.start[hidden]{display:none}
+.start h2{font-size:52px;text-transform:uppercase;margin-top:18px}
+
+@media (prefers-reduced-motion: reduce){
+  .in,.log .l,.ph > *{opacity:1!important;transform:none!important;clip-path:none!important;animation:none!important}
+  .meter i,.track i{width:var(--w)!important;animation:none!important}
+  .track b{opacity:1!important;animation:none!important}
+  .under::after{transform:none!important;animation:none!important}
+  .adapter{animation:none!important}
+}
+
+/* ---- see-it: the playground's own visuals, on the same three colours ---- */
+.form{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;max-width:560px;width:100%;font-family:var(--mono);font-size:14px}
+.form .k{color:var(--slate)} .form .v{border:2px solid var(--ink);padding:2px 10px;background:var(--paper);opacity:0}
+.scene.active .form .v{animation:rise .4s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d) * 1s)}
+.form .v.set{border-color:var(--rust);color:var(--rust);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,4vw,40px);align-items:center;width:100%;max-width:780px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+.big{font-weight:900;font-size:clamp(44px,8vw,88px);letter-spacing:-.04em;line-height:.9;color:var(--rust);margin:0}
+.big small{display:block;font-size:clamp(14px,2vw,18px);letter-spacing:0;color:var(--slate);font-weight:500;margin-top:8px}
+.tiny.def{font-size:14px;color:var(--ink);font-weight:500;border-left:4px solid var(--ink);padding-left:10px;max-width:70ch}
+.cost-row.p .track i{background:var(--rust)} .cost-row.s .track i{background:var(--ink)}
+.gr.tight{gap:18px} .gr.tight .req{padding:8px 14px} .gr.tight .meter{margin:6px 0 4px}
+/* mini tables for the OLTP-versus-star scene: the same rows, twice */
+.mts{display:grid;gap:15px}
+.mt{border:3px solid var(--ink);background:var(--paper);padding:4px 7px 5px;font-family:var(--mono);font-size:10px;line-height:1.3;box-shadow:var(--shadow-sm)}
+.mt.fact{box-shadow:var(--shadow-rust);border-color:var(--ink);margin-bottom:6px}
+.mt b{display:block;font-family:var(--sans);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.mt b small{font-family:var(--mono);font-weight:400;text-transform:none;letter-spacing:0;color:var(--slate);font-size:10px;margin-left:8px}
+.tip{border-bottom:2px dotted var(--rust);cursor:help;outline:none}
+.tip:focus-visible{outline:3px solid var(--rust);outline-offset:2px}
+#tipbox{position:fixed;z-index:60;display:none;max-width:360px;background:var(--ink);color:var(--paper);font:500 13px/1.45 var(--sans);padding:10px 13px;box-shadow:5px 5px 0 var(--rust);pointer-events:none}
+.controls #next.restart{background:var(--ink);color:var(--paper);min-width:96px}
+.mt table{border-collapse:collapse;margin-top:3px}
+.mt th{font-weight:400;color:var(--slate);text-align:left;padding:1px 7px 2px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.mt td{padding:2px 7px;white-space:nowrap;vertical-align:top}
+.mt th+th,.mt td+td{border-left:1px solid var(--hair)}
+.mt th:first-child,.mt td:first-child{padding-left:0}
+.mt tbody tr+tr td{border-top:1px dotted var(--hair)}
+.term .tt{border-collapse:collapse;margin-top:4px}
+.term .tt th{font-weight:400;color:#a39d92;text-align:left;padding:1px 12px 3px;border-bottom:1px solid #4a4640;white-space:nowrap}
+.term .tt td{padding:2px 12px;white-space:nowrap}
+.term .tt th+th,.term .tt td+td{border-left:1px solid #4a4640}
+.term .tt th:first-child,.term .tt td:first-child{padding-left:0}
+.term .tt td:first-child{color:var(--rust-lt)}
+.mt .phi{background:var(--rust);color:var(--paper);padding:0 3px}
+.mt .gone{color:var(--rust);font-style:italic}
+.mt .k{color:var(--rust);font-weight:600}
+.two.top{align-items:start}
+.pane-h{margin:0 0 6px;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.12em;color:var(--rust)}
+h2.sm{font-size:clamp(22px,3.2vw,34px)}
+.scene.dense{gap:10px}
+.chain.across.five{grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr}
+/* stacked chains: a hard shadow needs a real gap below it, not the grid's 8px */
+.chain.across+.chain.across,.scene .chain.across+.in>.chain.across{margin-top:16px}
+.scene>.chain.across{margin-bottom:6px}
+/* every shadowed block owns 10px below it, on top of the scene gap: a 9px hard shadow with 7px clearance reads as touching */
+.scene>.term,.scene>.chain,.scene>.gr,.scene>.two,.scene>.cost,.scene>.frame,.scene>.doors,.scene>.stamp,.scene>.row,.scene>.gl{margin-bottom:10px}
+.chain .link.bad{border-color:var(--rust);box-shadow:var(--shadow-rust)} .chain .link.bad b{color:var(--rust)}
+.rule{font-family:var(--mono);font-size:13px;border-left:6px solid var(--rust);padding:6px 12px;background:var(--paper);box-shadow:var(--shadow-sm);max-width:680px}
+.controls .auto{display:inline-flex;align-items:center;gap:8px;font:700 13px var(--sans);text-transform:uppercase;letter-spacing:.08em;color:var(--ink);cursor:pointer;padding:0 6px}
+.controls .auto input{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:0;border:2px solid var(--ink);background:var(--paper);cursor:pointer;display:inline-grid;place-content:center}
+.controls .auto input:checked{background:var(--rust);border-color:var(--rust)}
+.controls .auto input:checked::before{content:'';width:8px;height:8px;background:var(--paper)}
+.controls .auto input:focus-visible{outline:3px solid var(--rust);outline-offset:3px}
+.stage.ready #next{animation:pulse 1.2s ease-in-out infinite;background:var(--rust);color:var(--paper);border-color:var(--rust)}
+@keyframes pulse{50%{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}}
+.hint{font:600 12px var(--mono);color:var(--slate);text-align:center;margin:-6px 0 0;opacity:0;transition:opacity .3s}
+.stage.ready .hint{opacity:1}
+.start{justify-content:flex-start;overflow:auto;padding:28px 24px 40px;gap:14px}
+.start h2{margin-top:6px}
+.start .btns{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin:4px 0 6px}   /* hard shadows need real gap, not a space */
+.map{width:100%;max-width:900px;text-align:left;margin-top:18px;border-top:3px solid var(--ink);padding-top:14px}
+.map h3{font-weight:900;text-transform:uppercase;letter-spacing:.06em;font-size:15px;margin:14px 0 8px}
+.map h3 b{color:var(--rust)}
+.map .lede{font-size:13.5px;color:var(--slate);margin:0 0 8px;line-height:1.45}
+.map table{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.4}
+.map th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:6px 8px;border-bottom:3px solid var(--ink);color:var(--slate)}
+.map td{padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
+.map td:first-child{font-weight:700}
+.map td.def{color:var(--ink);font-weight:500;background:var(--paper)}
+.map td b{color:var(--rust);font-weight:700}
+.si{display:inline-block;font-style:normal;font-weight:900;font-size:10.5px;line-height:1;padding:3px 5px 2px;margin-right:4px;color:var(--paper);vertical-align:1px}
+.si.s{background:var(--rust)} .si.i{background:var(--ink)}
+.map .terrain{display:block;width:100%;max-width:760px;margin:6px 0 10px}
+.map .qs{margin:0 0 6px;font-size:12.5px;line-height:1.45}
+.map .qa{border:2px solid var(--ink);background:var(--paper);margin:6px 0}
+.map .qa summary{cursor:pointer;padding:8px 12px;list-style:none;display:flex;gap:10px;align-items:baseline}
+.map .qa summary::-webkit-details-marker{display:none}
+.map .qa summary::before{content:"";flex:none;width:10px;height:10px;background:var(--ink);transform:translateY(1px);transition:transform .2s}
+.map .qa[open] summary::before{background:var(--rust);transform:rotate(45deg)}
+.map .qa summary b{color:var(--rust)}
+.map .qa .ans{padding:2px 14px 10px 32px;border-top:2px solid var(--hair)}
+.map .qa .ans p{margin:6px 0} .map .qa .ans b{color:var(--ink)}
+.map .seg{display:block} .map .seg+.seg{margin-top:5px;padding-top:5px;border-top:1px dotted var(--hair)}
+.map code{font-family:var(--mono);font-size:11.5px;background:var(--ink);color:var(--paper);padding:0 5px}
+.map .src{font-size:11.5px;color:var(--slate);margin-top:8px}
+.start .close{display:none}
+.start.again .close{display:inline-block}
+.start.again .btn:not(.close){display:none}
+@media (max-width:700px){.map table{font-size:11.5px}.map th:nth-child(5),.map td:nth-child(5){display:none}}
+
+/* contextuals (8. Oct 2026): the stage is 980px and centred; wider screens leave margins. Each scene may carry two
+   asides that fly in from the edges after the main content lands: left "where this lives", right "in the room".
+   position:fixed escapes the screen's overflow clip; hidden under 1400px so a laptop never sees a half margin. */
+.ctx{position:fixed;top:50%;width:min(300px,calc(50vw - 490px - 36px));max-width:300px;transform:translateY(-50%);
+  font-size:13px;line-height:1.4;color:var(--ink);opacity:0;pointer-events:none;z-index:4;display:none}
+.ctx.l{left:24px} .ctx.r{right:24px}
+.ctx .ck{display:block;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.12em;color:var(--rust);margin-bottom:6px}
+.ctx .cb{border:3px solid var(--ink);background:var(--paper);padding:10px 12px;box-shadow:var(--shadow-sm)}
+.ctx.r .cb{border-color:var(--rust);box-shadow:3px 3px 0 var(--rust)}
+.ctx code{font-family:var(--mono);font-size:11.5px;background:var(--ink);color:var(--paper);padding:0 4px}
+.ctx.r .cb{font-weight:500;font-size:14px}
+@media (min-width:1400px){.ctx{display:block}
+  .scene.active .ctx.l{animation:ctxL .5s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s)}
+  .scene.active .ctx.r{animation:ctxR .5s cubic-bezier(.7,0,.2,1) forwards;animation-delay:calc(var(--d,0) * 1s)}}
+@keyframes ctxL{from{opacity:1;transform:translate(-120%,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+@keyframes ctxR{from{opacity:1;transform:translate(120%,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+.stage:not(.started) .ctx,.start:not([hidden]) ~ .ctx{display:none}
+@media (prefers-reduced-motion: reduce){.ctx{opacity:1!important;animation:none!important;transform:translateY(-50%)!important}}
+@media (max-height:680px){.scene.dense .two{zoom:.7} .scene.dense .pane-h{margin-bottom:2px} .gr.tight{gap:13px} .scene>.chain{margin-bottom:0} .scene>.term,.scene>.chain,.scene>.gr,.scene>.two,.scene>.cost,.scene>.frame,.scene>.doors,.scene>.stamp,.scene>.row,.scene>.gl{margin-bottom:2px} .mt{font-size:9.5px} .mts{gap:12px} .scene{gap:8px} .term{padding:10px 14px;line-height:1.45} h2{font-size:clamp(22px,3.8vw,34px)}}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="bars" id="bars" aria-hidden="true"></div>
+  <div class="mark" aria-hidden="true"><span><b></b>Northstar Care · fictional</span><span>governed analytics · see it run</span></div>
+
+  <div class="screen" id="screen">
+
+        <div class="start" id="start">
+      <p class="eyebrow">Northstar Care · a fictional value-based-care company · synthetic data</p>
+      <h2>Governed analytics</h2>
+      <p class="sub" style="text-align:center">One vague question, followed through a skill, a strict MCP server, a semantic layer, a read-only warehouse and a trace. 21 scenes at your own pace: each one plays, then waits for you. Sound on.</p>
+      <div class="btns"><button class="btn" id="goSound">Play with sound</button><button class="btn ghost" id="goQuiet">Play without sound</button><button class="btn close" id="mapClose">Back to the film</button></div>
+      <div class="map">
+        <h3><b>▸</b> What this covers, and where each idea lands</h3>
+        <table>
+          <tr><th>Concept</th><th>What it is</th><th>In this build</th></tr>
+          <tr><td>Semantic layer</td><td class="def">A file, or a database object, that lists each business number by name with its definition, its owner and the query that produces it. A dictionary the software reads.</td><td><code>metrics.yaml</code>: seven metrics, each with an owner, a definition and a SQL template, the file versioned, a single <code>{where}</code> slot (scene 07)</td></tr>
+          <tr><td>Strict schema as the gate</td><td class="def">The list of fields a tool accepts and the values each field may take. If a request does not fit the list, it is rejected before any code runs.</td><td>no SQL tool exists; metric and grain are <code>Literal</code> enums; months, payers, practices validated before anything is interpolated (08)</td></tr>
+          <tr><td>Identity and deny-by-default policy</td><td class="def">A written table of who may use which tools, metrics and grains. Anything not written in it is forbidden.</td><td>a <code>policy</code> block per role (tools, metrics, grains), default deny, explicit scope, PHI deny wins (09)</td></tr>
+          <tr><td>Shaping the question</td><td class="def">The step where a vague sentence is turned into those typed fields, by asking the user which measures, which months, which practice, at what grain.</td><td>the skill asks three analyst questions, fills typed fields, never computes a number itself (10)</td></tr>
+          <tr><td>Cost before execution</td><td class="def">A dry run that counts the rows a question would touch and prices them, returned to the user before the real query runs.</td><td><code>estimate_cost</code> dry run, actual beside estimate, 487:1 from guidance alone (11, 12)</td></tr>
+          <tr><td>The receipt and the trace</td><td class="def">The receipt: the definition, owner, version and an id attached to every answer. The trace: a log file with one line per call, holding the SQL and the costs.</td><td>definition, owner, version, trace id on every answer; one JSONL line per call; links verified (12, 16)</td></tr>
+          <tr><td>A refusal that names its rule</td><td class="def">A reply that says no and quotes the exact rule (policy, row, scope or schema) that produced the no.</td><td>policy, row, scope and schema refusals, each traced; the skill never retries around one (13)</td></tr>
+          <tr><td>PHI outside the tool surface</td><td class="def">PHI: protected health information, the columns that identify a person. Outside the tool surface: no tool the model can call is able to select them.</td><td><code>phi_columns</code> enforced at load; member grain returns ids only, analyst and above (14)</td></tr>
+          <tr><td>Evals with an independent key</td><td class="def">A list of questions with expected answers computed separately from the system under test, run as a script that fails when an answer differs.</td><td>20 questions, expected values from separate SQL, exit 1 on a miss, a human signs; q14 caught a double join (15)</td></tr>
+          <tr><td>The closed loop</td><td class="def">The chain estimate, answer, record, report, test, where each step feeds the next and nothing in between is done by hand.</td><td>estimate, answer, record, cost report, eval gate; Tier 3 runs it on every change with exact tokens (16)</td></tr>
+          <tr><td>Coverage, not the layer</td><td class="def">Coverage: the share of the system's behaviour the tests actually exercise. A passing suite says nothing about the paths it never asked about.</td><td>the payer grain never worked and no eval asked; 20 of 20 passed before and after (17)</td></tr>
+          <tr><td>Two shapes of governance</td><td class="def">Approval-shaped: a person reviews the request after it is made. Constraint-shaped: the rule is in the tool's schema, so the forbidden request cannot be written. One test tells them apart: what happens when someone tries the forbidden thing?</td><td>every gate here is constraint-shaped; the one approval left is a human commit to <code>metrics.yaml</code> (01)</td></tr>
+          <tr><td>Grain</td><td class="def">What one row of a table stands for. One action, one member, one practice-month. Same facts at a different grain give different numbers.</td><td>five grains in the schema, allowed per role; the member grain is the PHI door; the payer grain is the one no eval covered (03, 08, 17)</td></tr>
+          <tr><td>Fact and dimension (Kimball)</td><td class="def">A fact table: events with numbers, one row per event at one grain. A dimension table: the things the events are about, one row per thing. Facts in the middle, dimensions around them: the star.</td><td><code>actions</code> is the fact; <code>practices</code>, <code>members</code> and the calendar are the dimensions; a roll-up is a join plus a group by (05)</td></tr>
+          <tr><td>Warehouse as OLTP, denormalized with intent</td><td class="def">The analytical database is the application schema copied, flattened and re-keyed. Staging is the copy, marts are the flattened tables, dbt is the stored procedures in git with tests, the semantic layer is the agreed view definitions with an owner.</td><td>the generator writes an OLTP-shaped source and the server reads it at analytical grains (06)</td></tr>
+        </table>
+        <h3><b>▸</b> Technologies here, and why each one</h3>
+        <table>
+          <tr><th>Technology</th><th>What it is</th><th>Used for</th><th>Why this, not something else</th></tr>
+          <tr><td>Python + <code>uv</code></td><td class="def">Python is the programming language. uv is a tool that installs the libraries a script needs, fresh and pinned, each time it runs.</td><td>the server, the evals, the capture scripts</td><td>one runtime, dependencies pinned per run (<code>uv run --with</code>), no environment to drift</td></tr>
+          <tr><td>MCP Python SDK, <code>FastMCP</code> (<code>mcp&lt;2</code>)</td><td class="def">MCP is a wire protocol that lets an assistant such as Claude call functions on another program. FastMCP is the Python library that turns a plain function into one of those callable tools, with its argument list published as the schema.</td><td>the nine tools and two prompts the skill can call</td><td>the tool schema is the gate: a <code>Literal</code> in a signature is enforced before any code runs; 2.x renamed FastMCP, so the pin</td></tr>
+          <tr><td>DuckDB, read-only</td><td class="def">DuckDB is a database that lives in a single file on disk and runs inside the Python process; no server, no login. It speaks SQL and is built for analytical queries over tables.</td><td>the warehouse, 24 practices and 80k actions in one file</td><td>a demo tonight; the MCP layer is identical when Snowflake or Databricks sits behind it (D1). Read-only by construction: an injection cannot write</td></tr>
+          <tr><td>YAML semantic layer</td><td class="def">YAML is a plain-text format for structured data, indented lists and key: value pairs. The semantic layer is one YAML file.</td><td>metrics, grains, PHI list, the policy block</td><td>"defined once, asked by name" is provable in hours; a vendor semantic view is the same idea with a product around it (D2)</td></tr>
+          <tr><td>Claude Desktop skill + Project</td><td class="def">Claude Desktop is the Claude app on the Mac. A skill is a markdown file of instructions it follows for a task; a Project is a workspace with standing instructions and connected tools.</td><td>the surface the users are on; one MCP entry per role</td><td>the users are in Desktop (D4); a <code>set_role</code> tool is the hole the demo exists to show (D9)</td></tr>
+          <tr><td>JSONL trace, locked appends</td><td class="def">JSONL is a text file with one JSON object per line. A trace is that file, one line per tool call. A locked append means two processes writing at once cannot interleave their lines.</td><td>every call, with SQL, estimate, actual and links</td><td>greppable, diffable, no service to run; a DuckDB table next so reports query it (D10)</td></tr>
+          <tr><td>Generated, fuzzy data</td><td class="def">A Python script that invents the tables (practices, members, actions, payments) with random but domain-shaped values, plus four deliberate faults.</td><td>four planted traps</td><td>actions and payments per practice exist in no public set (D5); the traps make a careless agent wrong visibly</td></tr>
+          <tr><td>Evals in JSON + a runner</td><td class="def">A JSON file of questions with expected answers, and a script that runs each question through the server and compares.</td><td>20 questions, independent SQL, exit code</td><td>legible on a screen (D6); a human signature is a design choice, not a formality</td></tr>
+          <tr><td>This film's engine</td><td class="def">A single HTML page whose scenes are timed sections, with the sound synthesized in the browser; the same file the laudeman.io intro is made from.</td><td>the page you are on</td><td>a self-timed HTML page with a synthesized score, from the laudeman.io intro; concepts with an order are learned by watching them assemble</td></tr>
+        </table>
+        <h3><b>▸</b> The territory this sits in: data architecture, as seen from here</h3>
+        <p class="lede"><b>The frame.</b> Data architecture exists so that a number can be asked for by someone who did not produce it, and still be trusted, affordable and explainable afterwards. Everything in the field is one of four pieces of furniture around a store: a <b>dictionary</b> (what the number means and who owns it), a <b>gate</b> (who may ask, in what shape), a <b>log</b> (what actually ran) and a <b>test</b> (does the number still mean what the dictionary says). This playground is that sentence with a model as the asker instead of a dashboard.</p>
+        <svg class="terrain" viewBox="0 0 760 150" role="img" aria-label="An asker at the top; a gate, then the store, then a log, then a test, in a column; the dictionary beside the store."><g font-family="IBM Plex Mono, Menlo, monospace" font-size="12.5" font-weight="600">
+          <text x="130" y="18" text-anchor="middle" fill="#4a4640">asker · person, dashboard, agent</text>
+          <rect x="30" y="30" width="200" height="30" fill="#f2eee5" stroke="#141414" stroke-width="3"/><text x="130" y="50" text-anchor="middle" fill="#141414">gate · who may ask, how</text>
+          <rect x="30" y="72" width="200" height="30" fill="#141414" stroke="#141414" stroke-width="3"/><text x="130" y="92" text-anchor="middle" fill="#f2eee5">store · where the rows live</text>
+          <rect x="30" y="114" width="200" height="30" fill="#f2eee5" stroke="#141414" stroke-width="3"/><text x="130" y="134" text-anchor="middle" fill="#141414">log · what ran, what it cost</text>
+          <rect x="270" y="72" width="200" height="30" fill="#f2eee5" stroke="#b5462f" stroke-width="3"/><text x="370" y="92" text-anchor="middle" fill="#b5462f">dictionary · what it means</text>
+          <rect x="510" y="114" width="200" height="30" fill="#f2eee5" stroke="#141414" stroke-width="3"/><text x="610" y="134" text-anchor="middle" fill="#141414">test · still true?</text>
+          <path d="M130 22 V28 M130 60 V70 M130 102 V112" stroke="#b5462f" stroke-width="3" fill="none"/>
+          <path d="M232 87 H268" stroke="#b5462f" stroke-width="3" stroke-dasharray="6 4" fill="none"/>
+          <path d="M232 129 H508" stroke="#b5462f" stroke-width="3" stroke-dasharray="6 4" fill="none"/>
+          <text x="610" y="100" text-anchor="middle" fill="#4a4640" font-weight="400">reads the dictionary, replays the log</text>
+        </g></svg>
+        <table>
+          <tr><th>Room</th><th>What it is</th></tr>
+          <tr><td>Storage shapes</td><td class="def">Where rows live: a warehouse (Snowflake, DuckDB), a lake or lakehouse (Databricks); row stores versus column stores.</td></tr>
+          <tr><td>Modeling</td><td class="def">Facts (events with amounts) and dimensions (the things events are about), and the <b>grain</b>: what one row stands for.</td></tr>
+          <tr><td>Pipelines</td><td class="def">How rows arrive and are transformed into the model, on a schedule, with tests between steps.</td></tr>
+          <tr><td>Semantic layer</td><td class="def">The dictionary: each business number by name, with definition, owner, version and query.</td></tr>
+          <tr><td>Access and policy</td><td class="def">Who may read which rows and columns, written down and enforced at the store or the gate.</td></tr>
+          <tr><td>Observability</td><td class="def">Lineage (where a number came from), traces (what ran), cost per query, drift watches.</td></tr>
+          <tr><td>Quality and testing</td><td class="def">Tests on the data (freshness, uniqueness, ranges) and on the answers (evals against an independent key).</td></tr>
+          <tr><td>The agent as client</td><td class="def">A model asking the store through tools: MCP, skills, estimate before execute.</td></tr>
+        </table>
+        <h3><b>▸</b> Questions you don't know to ask yet</h3>
+        <div class="qs">
+          <details class="qa"><summary><b>Primitives:</b> what is a grain, really, and why does every bug here (double attribution, late payments, duplicate rows, walk-ins) turn out to be a grain mistake?</summary><div class="ans">
+            <p><b>A grain is the answer to "what does one row stand for".</b> One action, one payment, one visit, one member-month of attribution. It is a sentence written down next to the table, and everything else (a count, a rate, a join) is only correct relative to it.</p>
+            <p><b>Why every trap is a grain mistake:</b> duplicate action rows break "one row per action" (the fix is <code>COUNT(DISTINCT action_id)</code>); a late payment run breaks "one row per action-month" (payments live at paid-month grain, so April is low and May is high, and the definition says so); double attribution breaks "one member per practice-month" (so attributed members count once per practice); walk-ins break "a visit belongs to the member's practice" (so the join key needs practice, not member alone). None of them is a bug in SQL. Each is a question asked at one grain and answered from a table at another.</p>
+          </div></details>
+          <details class="qa"><summary><b>Governance:</b> who may change a metric's definition, and what happens to every report that cited the old version?</summary><div class="ans">
+            <p><b>Here: a commit.</b> Each metric in <code>metrics.yaml</code> has an owner (Head of Quality, Finance, VP Analytics, Head of Network) and the file has a version. Changing a definition is a pull request the owner reviews, and the version bumps (2026-10-07.1 to .2 when q14 was fixed, .2 to 2026-10-08.1 when visits arrived). <code>request_capability</code> can only return <code>granted: false</code>; the grant is the commit.</p>
+            <p><b>The old reports:</b> every answer carried its version in <code>cite_as</code>, so a report that cited v.1 is identifiable, and the trace holds the SQL that produced it. What this build does not do: re-issue them. A production layer needs a rule for that (re-run, annotate, or let them stand with their version visible); the playground only makes the question answerable.</p>
+          </div></details>
+          <details class="qa"><summary><b>Cost:</b> when does a semantic layer stop paying for itself, and is a seven-metric YAML file past that point or not yet near it?</summary><div class="ans">
+            <p><b>It pays when the same number is asked by more than one asker,</b> or by one asker more than once, or by anyone who did not write the SQL. Below that, a saved query is cheaper. The price is the discipline: an owner per metric, a version, a change process, and the refusals that follow ("no metric nobody defined").</p>
+            <p><b>Seven metrics is not yet near the ceiling; it is at the floor,</b> where the layer is still cheaper than the alternative because the alternative is an agent writing SQL against five tables with five traps. The point it stops paying is organisational, not numeric: when nobody owns the definitions and the file rots, or when every question is a one-off an analyst answers once. The dated prices in <code>prices.yaml</code> are the same idea for the cost side: a drift watch, not a number.</p>
+          </div></details>
+          <details class="qa"><summary><b>Boundary:</b> when is "ask by name" the wrong tool, and an analyst with raw SQL the right one?</summary><div class="ans">
+            <p><b>When the question is new.</b> Exploration, a hypothesis nobody has a metric for, a one-off investigation, reconciling two sources: that is analyst work with raw SQL, and the layer should get out of the way. "Ask by name" is for questions that recur and reach people who did not write the SQL: business users, dashboards, agents.</p>
+            <p><b>The build draws the line with a role, not a rule:</b> analyst and admin may see member grain and every metric; nothing here gives any role a SQL tool, by design (ADR 0001), because the demo's point is the agent. In a real deployment the analyst keeps a SQL seat beside the layer, and the layer gains a metric the day an exploration turns into a question somebody asks twice. <code>request_capability</code> is where that handoff is logged.</p>
+          </div></details>
+          <details class="qa"><summary><b>Measured by what:</b> how would you know the layer is working beyond "the evals pass"? What would lineage or a cost report have to show?</summary><div class="ans">
+            <p><b>Four readings, all from the trace.</b> Refusals over time by rule: a layer that is working refuses less as definitions and grants catch up with real questions, and the refusals it still issues are policy, not schema. Estimate against actual per answer: the two should agree, and the delta the guidance produced (487:1 here) should hold on real questions. Coverage: the share of metric-grain pairs the evals exercise; the payer grain had none and was broken for a day without a red light. Cost per answer by role and metric from <code>cost_report</code>, with the model side moving from estimated to exact once the SDK path exists.</p>
+            <p><b>What lineage adds:</b> for any number on any report, the chain back to a trace id, a version, an owner and the SQL that ran. The build has the chain; a production layer has to keep it queryable (Tier 1 moves the trace into a table for that reason).</p>
+          </div></details>
+          <details class="qa"><summary><b>Unlocks:</b> once every answer carries a trace id, what becomes possible that a dashboard never allowed: chargeback, replay, audit by question?</summary><div class="ans">
+            <p><b>Chargeback:</b> <code>cost_report</code> already sums warehouse and model cost by role and by metric; a principal is on every line, so a team can be billed for the questions it asked, not for a share of a dashboard nobody opens.</p>
+            <p><b>Replay:</b> the trace holds the SQL and the arguments, so any answer can be re-run against today's data, or against the version that produced it, and the difference explained. <b>Audit by question:</b> "who asked for member-level data this month, and what did they get" is a filter on the trace, not an investigation. <b>And the one the build points at:</b> the question-and-answer pairs become the eval set. Real use grows the test suite, which is the closed loop the film ends on.</p>
+          </div></details>
+        </div>
+        <h3><b>▸</b> The path, and what to build</h3>
+        <p class="lede"><b>Path:</b> modeling first, because grain explains the traps you have already seen · then the semantic layer, as the dictionary over that model · then access and policy, built this week · then observability, where the trace becomes lineage · then quality, where evals meet data tests · storage shapes last, by which point Snowflake versus Databricks is a vendor choice, not a concept.</p>
+        <p class="lede"><b>Build:</b> a second fact table in the generator with a different grain (visits per member per month) and one metric over it that joins to actions. The moment you pick the join key you meet every modeling question above with your hands, and the evals tell you whether you got it right.</p>
+      </div>
+    </div>
+
+    <!-- intro -->
+    <section class="scene" data-dur="11000" aria-label="Intro">
+      <div class="term in" style="--d:0">
+        <div><span class="p">›</span> <span data-type="how's practice 12 doing?" data-at="300" data-speed="60"></span></div>
+        <div class="dim in" style="--d:2">&nbsp;&nbsp;⎿ no metric · no window · no grain · no SQL</div>
+        <div class="in" style="--d:2.6" data-sfx="tick" data-t="2.6"><span class="ok">●</span> a business user, in Claude Desktop</div>
+      </div>
+      <div class="bubble in" style="--d:3.4" data-sfx="pop" data-t="3.4">the question</div>
+      <h1 class="in" style="--d:4.4">Ask. Be governed.</h1>
+      <aside class="ctx l" style="--d:5.0"><span class="ck">where this lives</span><div class="cb">The whole path: <code>docs/walkthrough.html</code>, fifteen steps with every number captured from <code>server.py</code>.</div></aside>
+      <aside class="ctx r" style="--d:5.6"><span class="ck">say it</span><div class="cb">“That question has a known shape. I’d answer the scorecard first, state the defaults, and let you turn any knob.”</div></aside>
+    </section>
+    <!-- four questions -->
+    <section class="scene" data-dur="12500" aria-label="Four questions">
+      <h2 class="in" style="--d:0">Four things decide whether an answer can be trusted and paid for.</h2>
+      <div class="chain across">
+        <div class="link in" style="--d:.8" data-sfx="tick" data-t=".8"><b><i>01</i>Who asked</b><span>and what they may see</span></div><div class="arrow in" style="--d:1.1">→</div>
+        <div class="link in" style="--d:1.4" data-sfx="tick" data-t="1.4"><b><i>02</i>Who owns the metric</b><span>defined once, versioned</span></div><div class="arrow in" style="--d:1.7">→</div>
+        <div class="link in" style="--d:2" data-sfx="tick" data-t="2"><b><i>03</i>What happened</b><span>a trace with the SQL</span></div><div class="arrow in" style="--d:2.3">→</div>
+        <div class="link final in" style="--d:2.6" data-sfx="ding" data-t="2.6"><b><i>04</i>What it cost</b><span>priced before it ran</span></div>
+      </div>
+      <p class="sub in" style="--d:3.4">Most "chat with your data" demos skip all four. This one builds them in from the first line.</p>
+      <aside class="ctx l" style="--d:4.0"><span class="ck">where this lives</span><div class="cb"><code>README.md</code>, the first paragraph. Each later scene answers one of the four.</div></aside>
+      <aside class="ctx r" style="--d:4.6"><span class="ck">say it</span><div class="cb">“Can you show what the agent was allowed to do, what it did, and what it cost? If not, it isn’t ready.”</div></aside>
+    </section>
+    <!-- the test -->
+    <section class="scene" data-dur="17000" aria-label="The test">
+      <p class="kick in" style="--d:0"><b>01</b><span>Two shapes of governance</span></p>
+      <p class="tiny def in" style="--d:.15">Governance is a rule about who may do what. One question tells its two shapes apart: what happens when someone tries the forbidden thing?</p>
+      <h2 class="in" style="--d:.3">Reviewed afterwards, or impossible to write.</h2>
+      <div class="chain across">
+        <div class="link in" style="--d:1" data-sfx="tick" data-t="1"><b>ask</b><span>a ticket, a thread</span></div><div class="arrow in" style="--d:1.1">→</div>
+        <div class="link in" style="--d:1.3" data-sfx="tick" data-t="1.3"><b>wait</b><span>for a person</span></div><div class="arrow in" style="--d:1.4">→</div>
+        <div class="link bad in" style="--d:1.6" data-sfx="block" data-t="1.6"><b>maybe</b><span>the reviewer protects the reviewer</span></div><div class="arrow in" style="--d:1.7">→</div>
+        <div class="link in" style="--d:1.9"><b>act</b><span>slower every time</span></div>
+      </div>
+      <div class="chain across">
+        <div class="link in" style="--d:2.4" data-sfx="tick" data-t="2.4"><b>ask</b><span>a typed request</span></div><div class="arrow in" style="--d:2.5">→</div>
+        <div class="link in" style="--d:2.7" data-sfx="gate" data-t="2.7"><b>fits the schema?</b><span>the rule is in the type</span></div><div class="arrow in" style="--d:2.8">→</div>
+        <div class="link final in" style="--d:3" data-sfx="ding" data-t="3"><b>act</b><span>or a type error, named</span></div>
+      </div>
+      <p class="verdict-line in" style="--d:4" data-sfx="tick" data-t="4">Above: a person on the path. Below: the decision taken off the path, in the shape of the tool.</p>
+      <aside class="ctx l" style="--d:4.6"><span class="ck">where this lives</span><div class="cb"><code>docs/adr/0006</code>: deny by default, the constraint-shaped rule in this build; the test itself is section 01 of the explainer <code>governance-is-a-schema</code>.</div></aside>
+      <aside class="ctx r" style="--d:5.2"><span class="ck">say it</span><div class="cb">“What happens when someone tries the forbidden thing? Reviewed afterwards, or impossible to write.”</div></aside>
+    </section>
+    <!-- the parts -->
+    <section class="scene" data-dur="13500" aria-label="The parts">
+      <p class="kick in" style="--d:0"><b>02</b><span>The parts</span></p>
+      <h2 class="in" style="--d:.2">Five pieces. Only one of them touches the data.</h2>
+      <div class="chain across five">
+        <div class="link in" style="--d:.9" data-sfx="tick" data-t=".9"><b>skill</b><span>shapes the question</span></div><div class="arrow in" style="--d:1.1">→</div>
+        <div class="link in" style="--d:1.4" data-sfx="tick" data-t="1.4"><b>MCP server</b><span>answers metrics by name</span></div><div class="arrow in" style="--d:1.6">→</div>
+        <div class="link in" style="--d:1.9" data-sfx="tick" data-t="1.9"><b>semantic layer</b><span>definitions, owners, policy</span></div><div class="arrow in" style="--d:2.1">→</div>
+        <div class="link in" style="--d:2.4" data-sfx="tick" data-t="2.4"><b>warehouse</b><span>read-only</span></div><div class="arrow in" style="--d:2.6">→</div>
+        <div class="link final in" style="--d:2.9" data-sfx="ding" data-t="2.9"><b>trace</b><span>one line per call</span></div>
+      </div>
+      <p class="sub in" style="--d:3.8">The user talks to the skill. The skill talks to the server. Everything the server does lands on the trace.</p>
+      <aside class="ctx l" style="--d:4.4"><span class="ck">where this lives</span><div class="cb"><code>plan.md</code>: the build ladder, Tier 0 to Tier 3. Only the server touches the data.</div></aside>
+      <aside class="ctx r" style="--d:5.0"><span class="ck">say it</span><div class="cb">“Five pieces, one of them touches the warehouse. That one has no SQL tool.”</div></aside>
+    </section>
+    <!-- grain -->
+    <section class="scene" data-dur="20500" aria-label="Grain">
+      <p class="kick in" style="--d:0"><b>03</b><span>Grain</span></p>
+      <p class="tiny def in" style="--d:.15">Grain is the answer to one question about a table: what does a single row stand for? One action, one member, one practice-month.</p>
+      <h2 class="in" style="--d:.3">Same six rows. Six, four, three, or two.</h2>
+      <div class="term in" style="--d:.8">
+        <div><span class="dim">fct_actions · one row per completed action · synthetic</span></div>
+        <table class="tt"><thead><tr><th>action_id</th><th>practice</th><th>member</th><th>payer</th><th>measure</th><th>month</th></tr></thead><tbody>
+          <tr class="in" style="--d:1.10"><td>A-1001</td><td>12</td><td>MBR-0042</td><td>Blue Harbor</td><td>A1c</td><td>Jul</td></tr>
+          <tr class="in" style="--d:1.25"><td>A-1002</td><td>12</td><td>MBR-0042</td><td>Blue Harbor</td><td>SDOH</td><td>Jul</td></tr>
+          <tr class="in" style="--d:1.40"><td>A-1003</td><td>12</td><td>MBR-0077</td><td>Blue Harbor</td><td>A1c</td><td>Aug</td></tr>
+          <tr class="in" style="--d:1.55"><td>A-1004</td><td>07</td><td>MBR-0310</td><td>Meridian</td><td>A1c</td><td>Jul</td></tr>
+          <tr class="in" style="--d:1.70"><td>A-1005</td><td>07</td><td>MBR-0310</td><td>Meridian</td><td>A1c</td><td>Sep</td></tr>
+          <tr class="in" style="--d:1.85"><td>A-1006</td><td>19</td><td>MBR-0555</td><td>Blue Harbor</td><td>SDOH</td><td>Sep</td></tr>
+        </tbody></table>
+      </div>
+      <div class="chain across five">
+        <div class="link in" style="--d:2.4" data-sfx="tick" data-t="2.4"><b>total</b><span>6</span></div><div class="arrow in" style="--d:2.5">·</div>
+        <div class="link in" style="--d:2.7" data-sfx="tick" data-t="2.7"><b>payer</b><span>4 · 2</span></div><div class="arrow in" style="--d:2.8">·</div>
+        <div class="link in" style="--d:3" data-sfx="tick" data-t="3"><b>practice</b><span>3 · 2 · 1</span></div><div class="arrow in" style="--d:3.1">·</div>
+        <div class="link in" style="--d:3.3" data-sfx="tick" data-t="3.3"><b>month</b><span>3 · 1 · 2</span></div><div class="arrow in" style="--d:3.4">·</div>
+        <div class="link bad in" style="--d:3.6" data-sfx="block" data-t="3.6"><b>member</b><span>2 · 1 · 2 · 1 · <span class="tip" tabindex="0" data-tip="Member grain returns member ids only, and the policy grants it to analyst and admin. External and CSM roles get a refusal that names the grain.">PHI, refused below analyst</span></span></div>
+      </div>
+      <p class="tiny in" style="--d:4.8">In dbt: a <code><span class="tip" tabindex="0" data-tip="A dbt test that fails the build if any value repeats in a column. On action_id it is the grain, written down as a check.">unique</span></code> test on the key and one line of docs. For an agent that line is the interface. Not written down, not there.</p>
+      <aside class="ctx l" style="--d:5.4"><span class="ck">where this lives</span><div class="cb"><code>data/generate.py</code>: actions at one row per action, visits at one row per visit; the eval notes name the grain each trap exploits.</div></aside>
+      <aside class="ctx r" style="--d:6.0"><span class="ck">say it</span><div class="cb">“If the grain isn’t written down, for an agent it doesn’t exist.”</div></aside>
+    </section>
+    <!-- double count -->
+    <section class="scene" data-dur="17000" aria-label="Double count">
+      <p class="kick in" style="--d:0"><b>04</b><span>The double count</span></p>
+      <p class="tiny def in" style="--d:.15">A double count is a question asked at one grain and answered from a table at another.</p>
+      <h2 class="in" style="--d:.3">"How many members completed an A1c?"</h2>
+      <div class="two">
+        <p class="big in" style="--d:1" data-sfx="block" data-t="1">4<small>A1c rows: 1001, 1003, 1004, 1005</small></p>
+        <p class="big in" style="--d:1.8;color:var(--ink)" data-sfx="ding" data-t="1.8">3<small>members: MBR-0310 completed it twice</small></p>
+      </div>
+      <p class="rule in" style="--d:2.8">count(*) answers the action grain. count(DISTINCT member_id) answers the question. The SQL was not wrong; nobody told the agent the grain.</p>
+      <p class="verdict-line in" style="--d:4.2" data-sfx="tick" data-t="4.2">1.240 open gaps on the agent, 1.180 on the dashboard: this table at scale.</p>
+      <aside class="ctx l" style="--d:4.8"><span class="ck">where this lives</span><div class="cb"><code>metrics.yaml</code>: every count is <code>COUNT(DISTINCT ...)</code> at a named grain; the 1.240 versus 1.180 case in the explainer.</div></aside>
+      <aside class="ctx r" style="--d:5.4"><span class="ck">say it</span><div class="cb">“The SQL wasn’t wrong. The question was at member grain and the table at action grain, and nothing said so.”</div></aside>
+    </section>
+    <!-- the star -->
+    <section class="scene" data-dur="19500" aria-label="The star">
+      <p class="kick in" style="--d:0"><b>05</b><span>The Kimball star</span></p>
+      <p class="tiny def in" style="--d:.15">A fact table holds events with numbers on them, one row per event, at one declared grain. A dimension table holds the things the events are about, one row per thing. Facts in the middle, dimensions around them: a star.</p>
+      <h2 class="in" style="--d:.3">Facts in the middle. Every dimension one join away.</h2>
+      <div class="chain across">
+        <div class="link in" style="--d:1" data-sfx="tick" data-t="1"><b>dim_practice</b><span>practice_name · state · payer</span></div><div class="arrow in" style="--d:1.2">→</div>
+        <div class="link final in" style="--d:1.5" data-sfx="ding" data-t="1.5"><b>fct_actions</b><span>action_id, the grain · three FKs · measure · paid_amt</span></div><div class="arrow in" style="--d:1.7">←</div>
+        <div class="link bad in" style="--d:2" data-sfx="block" data-t="2"><b>dim_member</b><span>member_number · dob · name: PHI</span></div>
+      </div>
+      <p class="rule in" style="--d:2.8">A roll-up is a join to a dimension and a group by one of its columns. payer grain: join dim_practice, group by payer. month grain: join dim_date. member grain: join dim_member, the moment PHI is reachable.</p>
+      <p class="tiny in" style="--d:4">Ralph Kimball, <i>The Data Warehouse Toolkit</i>, 1996. Still the dialect every dbt shop speaks.</p>
+      <aside class="ctx l" style="--d:4.6"><span class="ck">where this lives</span><div class="cb"><code>practices</code>, <code>members</code> are the dimensions; <code>actions</code>, <code>payments</code>, <code>visits</code> the facts. Payer grain is a join to <code>practices</code>.</div></aside>
+      <aside class="ctx r" style="--d:5.2"><span class="ck">say it</span><div class="cb">“A roll-up is a join to a dimension and a group by one of its columns. That is all payer grain is.”</div></aside>
+    </section>
+    <!-- from oltp -->
+    <section class="scene dense" data-dur="23000" aria-label="From OLTP">
+      <p class="kick in" style="--d:0"><b>06</b><span>From the other side of the wall</span></p>
+      <p class="tiny def in" style="--d:.15">A warehouse is the app's schema copied, flattened on purpose and re-keyed. Same rows twice: member 3809, practice 12, actions in 2026-01 and 2026-04, from <code>northstar.duckdb</code>.</p>
+      <h2 class="sm in" style="--d:.3">You wrote the left half for twenty years.</h2>
+      <div class="two top">
+        <div><p class="pane-h in" style="--d:.8">the app's tables · written once</p><div class="mts"><div class="mt  in" style="--d:0.9"><b>members<small>one row per person</small></b><table><thead><tr><th>member_id</th><th>member_number</th><th>member_name</th><th>dob</th><th>payer</th></tr></thead><tbody><tr><td><span class="k">3809</span></td><td><span class="phi">MBR003809</span></td><td><span class="phi">Member 3809</span></td><td><span class="phi">1966-11-28</span></td><td>Blue Harbor Health</td></tr></tbody></table></div><div class="mt  in" style="--d:1.1"><b>practices<small>one row per practice</small></b><table><thead><tr><th>practice_id</th><th>practice_name</th><th>state</th><th>payer</th></tr></thead><tbody><tr><td><span class="k">12</span></td><td>Practice 12</td><td>TN</td><td>Blue Harbor Health</td></tr></tbody></table></div><div class="mt  in" style="--d:1.3"><b>actions<small>one row per care action</small></b><table><thead><tr><th>action_id</th><th>member_id</th><th>practice_id</th><th>measure</th><th>status</th><th>action_date</th></tr></thead><tbody><tr><td><span class="k">37126</span></td><td>3809</td><td>12</td><td>AWV</td><td>completed</td><td>2026-01-05</td></tr><tr><td><span class="k">37128</span></td><td>3809</td><td>12</td><td>SDOH</td><td>completed</td><td>2026-04-07</td></tr></tbody></table></div><div class="mt  in" style="--d:1.5"><b>payments<small>one row per paid action</small></b><table><thead><tr><th>action_id</th><th>practice_id</th><th>paid_month</th><th>amount</th></tr></thead><tbody><tr><td><span class="k">37126</span></td><td>12</td><td>2026-01</td><td>30,00</td></tr><tr><td><span class="k">37128</span></td><td>12</td><td>2026-04</td><td>22,50</td></tr></tbody></table></div></div></div>
+        <div><p class="pane-h in" style="--d:2.3">the star · duplicated on purpose</p><div class="mts"><div class="mt fact in" style="--d:2.4" data-sfx="ding" data-t="2.4"><b>fct_actions<small>one row per action · <span class="tip" tabindex="0" data-tip="In the app, payments is its own table keyed by action. In the star the payment becomes columns on the fact row, so 'what was paid for this action' is no join at all.">payment folded in</span></small></b><table><thead><tr><th>action_id</th><th>date_key</th><th>practice_key</th><th>member_key</th><th>measure</th><th>status</th><th>paid_month</th><th>amount</th></tr></thead><tbody><tr><td><span class="k">37126</span></td><td>2026-01-05</td><td>12</td><td>3809</td><td>AWV</td><td>completed</td><td>2026-01</td><td>30,00</td></tr><tr><td><span class="k">37128</span></td><td>2026-04-07</td><td>12</td><td>3809</td><td>SDOH</td><td>completed</td><td>2026-04</td><td>22,50</td></tr></tbody></table></div><div class="mt  in" style="--d:2.8" data-sfx="tick" data-t="2.8"><b>dim_practice<small>payer flattened in</small></b><table><thead><tr><th>practice_key</th><th>practice_name</th><th>state</th><th>payer</th></tr></thead><tbody><tr><td><span class="k">12</span></td><td>Practice 12</td><td>TN</td><td>Blue Harbor Health</td></tr></tbody></table></div><div class="mt  in" style="--d:3.1" data-sfx="tick" data-t="3.1"><b>dim_member<small><span class="tip" tabindex="0" data-tip="Not masked: absent. The columns are never copied into the dimension, so no role, grant or prompt can reach them.">PHI columns not loaded</span></small></b><table><thead><tr><th>member_key</th><th>payer</th><th>member_number</th><th>member_name</th><th>dob</th></tr></thead><tbody><tr><td><span class="k">3809</span></td><td>Blue Harbor Health</td><td><span class="gone">not loaded</span></td><td><span class="gone">not loaded</span></td><td><span class="gone">not loaded</span></td></tr></tbody></table></div><div class="mt  in" style="--d:3.4" data-sfx="tick" data-t="3.4"><b>dim_date<small>the calendar as a table</small></b><table><thead><tr><th>date_key</th><th>month</th><th>quarter</th><th>year</th></tr></thead><tbody><tr><td><span class="k">2026-01-05</span></td><td>2026-01</td><td>Q1</td><td>2026</td></tr><tr><td><span class="k">2026-04-07</span></td><td>2026-04</td><td>Q2</td><td>2026</td></tr></tbody></table></div></div></div>
+      </div>
+      <p class="verdict-line in" style="--d:4.8" data-sfx="tick" data-t="4.8">Four joins to answer one question. Then one.</p>
+
+      <aside class="ctx l" style="--d:5.4"><span class="ck">where this lives</span><div class="cb">The explainer’s OLTP-to-warehouse mapping table; here the generator skips OLTP and writes the star directly.</div></aside>
+      <aside class="ctx r" style="--d:6.0"><span class="ck">say it</span><div class="cb">“You’ve modelled the left half for twenty years. The warehouse is that schema flattened on purpose and re-keyed.”</div></aside>
+    </section>
+    <!-- semantic layer -->
+    <section class="scene" data-dur="23000" aria-label="Semantic layer">
+      <p class="kick in" style="--d:0"><b>07</b><span>The semantic layer</span></p>
+      <p class="tiny def in" style="--d:.15">A semantic layer is a file, or a database object, that lists each business number by name with its definition, its owner and the query that produces it.</p>
+      <h2 class="in" style="--d:.2">Defined once. Asked by name.</h2>
+      <div class="term in" style="--d:.8">
+        <div><span class="dim">metrics.yaml · v2026-10-08.1</span></div>
+        <div class="in" style="--d:1.3"><span class="p">care_gaps_open:</span></div>
+        <div class="in" style="--d:1.7" data-sfx="tick" data-t="1.7">&nbsp;&nbsp;owner: <span class="ok">Head of Quality</span></div>
+        <div class="in" style="--d:2.1" data-sfx="tick" data-t="2.1">&nbsp;&nbsp;description: open care actions in the window, deduplicated on action_id</div>
+        <div class="in" style="--d:2.6" data-sfx="tick" data-t="2.6">&nbsp;&nbsp;sql: SELECT COUNT(DISTINCT action_id) … WHERE status='open' <span class="bad"><span class="tip" tabindex="0" data-tip="The only slot the server fills, and only from validated fields: practice, payer, months, measure. Free text from the user never reaches it.">{where}</span></span></div>
+        <div class="dim in" style="--d:3.2">&nbsp;&nbsp;⎿ the slot is the only thing the server fills, from typed fields</div>
+      </div>
+      <p class="sub in" style="--d:3.8">A warehouse vendor's semantic view is the same idea: metrics, dimensions and filters as declared objects. Here it is a YAML file, so it is provable in an afternoon.</p>
+      <p class="tiny in" style="--d:4.4">Changing a definition is a commit, and bumps the version that rides on every citation.</p>
+      <aside class="ctx l" style="--d:5.0"><span class="ck">where this lives</span><div class="cb"><code>metrics.yaml</code>, seven metrics; <code>docs/adr/0005</code> on why YAML before the vendor’s view.</div></aside>
+      <aside class="ctx r" style="--d:5.6"><span class="ck">say it</span><div class="cb">“A Semantic View is the same idea with a product around it. I proved the shape in YAML in an afternoon.”</div></aside>
+    </section>
+    <!-- strict schema -->
+    <section class="scene" data-dur="20000" aria-label="Strict schema">
+      <p class="kick in" style="--d:0"><b>08</b><span>The schema is the gate</span></p>
+      <p class="tiny def in" style="--d:.15">A tool schema is the list of fields a tool accepts and the values each may take. Here it is the only way in.</p>
+      <h2 class="in" style="--d:.2">There is no tool that takes SQL.</h2>
+      <div class="term in" style="--d:.8">
+        <div><span class="dim">server.py</span></div>
+        <div class="in" style="--d:1.2"><span class="p">Metric</span> = <span class="tip" tabindex="0" data-tip="A Python type that allows only the listed values. FastMCP publishes it as an enum in the tool's schema, so Claude is offered these names and nothing else; anything else is rejected before the function runs.">Literal[</span><span class="ok">"care_gaps_open"</span>, <span class="ok">"care_gaps_closed"</span>, <span class="ok">"gap_closure_rate"</span>, <span class="ok">"actions_paid_usd"</span>, <span class="ok">"attributed_members"</span>]</div>
+        <div class="in" style="--d:1.8"><span class="p">Grain</span> = Literal["practice", "payer", "month", "member", "total"]</div>
+        <div class="in" style="--d:2.4" data-sfx="block" data-t="2.4"><span class="bad">get_metric(metric="revenue")</span> <span class="dim">→ schema error, before any code runs</span></div>
+        <div class="in" style="--d:3" data-sfx="block" data-t="3"><span class="bad">month_from="2026-07' OR 1=1 --"</span> <span class="dim">→ refused: must be YYYY-MM</span></div>
+      </div>
+      <p class="note in" style="--d:3.6">Governance is not a committee. More often it is a well-designed schema.</p>
+      <p class="tiny in" style="--d:4.2">Months, payers, practices and measures are validated against the data before anything is interpolated. An unvalidated month field once bypassed row scope; the smoke test now asserts the exact payload is refused.</p>
+      <aside class="ctx l" style="--d:4.8"><span class="ck">where this lives</span><div class="cb"><code>server.py</code>: <code>Metric = Literal[...]</code>; <code>docs/adr/0001</code>. Smoke test line: the injection payload, refused.</div></aside>
+      <aside class="ctx r" style="--d:5.4"><span class="ck">say it</span><div class="cb">“Governance isn’t a committee. More often it’s a well-designed schema.”</div></aside>
+    </section>
+    <!-- who is asking -->
+    <section class="scene" data-dur="22000" aria-label="Who is asking">
+      <p class="kick in" style="--d:0"><b>09</b><span>Who is asking</span></p>
+      <p class="tiny def in" style="--d:.15">A policy is a written table of who may use which tools, metrics and grains. Here it lives in the same YAML file as the metrics.</p>
+      <h2 class="in" style="--d:.2"><span class="tip" tabindex="0" data-tip="No statement, no access. A role, a tool, a metric or a grain that the policy block in metrics.yaml does not name is refused, and the refusal says which statement is missing (ADR 0006).">Deny by default</span>. A grant is a written statement.</h2>
+      <div class="term in" style="--d:.8">
+        <div><span class="dim">metrics.yaml · policy</span></div>
+        <div class="in" style="--d:1.2">&nbsp;&nbsp;default: <span class="p">deny</span></div>
+        <div class="in" style="--d:1.6" data-sfx="tick" data-t="1.6">&nbsp;&nbsp;external: tools [whoami … get_metric] · metrics [care_gaps_*] · grains [total, practice, month]</div>
+        <div class="in" style="--d:2.1" data-sfx="tick" data-t="2.1">&nbsp;&nbsp;csm: + actions_paid_usd, attributed_members · + payer grain</div>
+        <div class="in" style="--d:2.6" data-sfx="tick" data-t="2.6">&nbsp;&nbsp;analyst: + member grain &nbsp;·&nbsp; admin: "*"</div>
+        <div class="dim in" style="--d:3.1">&nbsp;&nbsp;⎿ a role with no statement gets nothing · explicit deny for PHI wins</div>
+      </div>
+      <p class="was in" style="--d:3.8"><span class="strike">practice_scope: none (admin sees all)</span></p>
+      <p class="tiny in" style="--d:4.6">Scope is explicit too: a practice number, or the literal "all". Unset refuses, admin included. Absence of a grant is not a grant.</p>
+      <aside class="ctx l" style="--d:5.2"><span class="ck">where this lives</span><div class="cb"><code>metrics.yaml › policy</code>; <code>docs/adr/0006</code>, deny by default; <code>docs/adr/0002</code>, scope explicit.</div></aside>
+      <aside class="ctx r" style="--d:5.8"><span class="ck">say it</span><div class="cb">“A new user gets Claude on the warehouse by being given a role, not a review.”</div></aside>
+    </section>
+    <!-- shape it -->
+    <section class="scene" data-dur="17500" aria-label="Shape it">
+      <p class="kick in" style="--d:0"><b>10</b><span>Shape the question</span></p>
+      <p class="tiny def in" style="--d:.15">Shaping is turning one vague sentence into typed fields: metric, measure, months, practice, grain.</p>
+      <h2 class="in" style="--d:.2">The skill does not guess. It asks three things.</h2>
+      <div class="two">
+        <div class="hyp in" style="--d:.8"><li data-sfx="tick" data-t=".8">which measures: A1C, BP, CCS, COL, AWV, SDOH, or all</li><li data-sfx="tick" data-t="1.3">which months: from, to</li><li data-sfx="tick" data-t="1.8">which practice or payer, at what grain</li></div>
+        <div class="form">
+          <span class="k">metric</span><span class="v set" style="--d:2.4">care_gaps_open</span>
+          <span class="k">measure</span><span class="v set" style="--d:2.7">A1C</span>
+          <span class="k">months</span><span class="v set" style="--d:3">2026-07 → 2026-09</span>
+          <span class="k">practice</span><span class="v set" style="--d:3.3">12</span>
+          <span class="k">grain</span><span class="v set" style="--d:3.6" data-sfx="ding" data-t="3.6">practice</span>
+        </div>
+      </div>
+      <p class="tiny in" style="--d:4.4">Every field is typed. The free text travels alongside, so the trace shows what the user meant beside what was run.</p>
+      <aside class="ctx l" style="--d:5.0"><span class="ck">where this lives</span><div class="cb"><code>skill/shape-my-question/SKILL.md</code>. Since 8. Oct the scorecard comes first; these three questions are the knobs.</div></aside>
+      <aside class="ctx r" style="--d:5.6"><span class="ck">say it</span><div class="cb">“Interrogating first is what makes agents feel like forms.”</div></aside>
+    </section>
+    <!-- price first -->
+    <section class="scene" data-dur="19000" aria-label="Price first">
+      <p class="kick in" style="--d:0"><b>11</b><span>Price before you run</span></p>
+      <p class="tiny def in" style="--d:.15">An estimate is a dry run: a count of the rows a question would touch, priced, returned before the real query runs.</p>
+      <h2 class="in" style="--d:.2">The naive question, priced. Then the shaped one.</h2>
+      <div class="cost">
+        <div class="cost-row p in" style="--d:.8"><span><span class="tip" tabindex="0" data-tip="Rows scanned: a COUNT(*) over the exact predicate the answer would use (every practice, Jan to Sep, member grain) = 79.864 rows. Warehouse cost = rows ÷ 1.000 × $0,0023 (the stand-in rate in metrics.yaml) = $0,18.">rows · naive</span></span><div class="track"><i style="--w:100%;--d:.8"></i><b style="--d:.8">79.864</b></div></div>
+        <div class="cost-row s in" style="--d:1.3"><span><span class="tip" tabindex="0" data-tip="The same COUNT with practice 12, A1C, Jul to Sep: 164 rows. Warehouse cost = 164 ÷ 1.000 × $0,0023 = $0,0004.">rows · shaped</span></span><div class="track"><i style="--w:1%;--d:1.3"></i><b style="--d:1.3">164</b></div></div>
+        <div class="cost-row p in" style="--d:1.9"><span><span class="tip" tabindex="0" data-tip="Estimated, not measured. Input tokens = 350 + question length ÷ 4 = 363. Output tokens = 120 + 14 per result row × 8.178 member rows = 114.612. Priced at claude-sonnet, $3,00 in and $15,00 out per million tokens (prices.yaml, as of 7. Oct 2026) = $1,72. The result rows drive it: every member becomes a line in the model's context.">model, est. · naive</span></span><div class="track"><i style="--w:100%;--d:1.9"></i><b style="--d:1.9">$1,72</b></div></div>
+        <div class="cost-row s in" style="--d:2.4"><span><span class="tip" tabindex="0" data-tip="One result row: 357 tokens in, 134 out, at the same prices = $0,0031. Exact tokens arrive only with the Agent SDK path (ADR 0003); until then the label says estimate.">model, est. · shaped</span></span><div class="track"><i style="--w:1%;--d:2.4"></i><b style="--d:2.4">$0,0031</b></div></div>
+      </div>
+      <p class="stamp in" style="--d:3.6" data-sfx="stamp" data-t="3.6">487 : 1 <span class="tip" tabindex="0" data-tip="487 = 79.864 ÷ 164 rows scanned. The model-cost ratio is larger, 558 : 1, because result rows drive tokens and the shaped question returns one row instead of 8.178.">from the guidance alone</span></p>
+      <p class="tiny in" style="--d:4.6">A dry run: a COUNT over the exact predicate the answer will use. The model side is labelled an estimate until the Agent SDK path returns real tokens. Nothing was optimised in the warehouse.</p>
+      <aside class="ctx l" style="--d:5.2"><span class="ck">where this lives</span><div class="cb"><code>estimate_cost</code> in <code>server.py</code>; <code>docs/adr/0003</code>. The model side is labelled an estimate.</div></aside>
+      <aside class="ctx r" style="--d:5.8"><span class="ck">say it</span><div class="cb">“Benchmark first, optimise, measure after. Here the optimisation is a conversation.”</div></aside>
+    </section>
+    <!-- the receipt -->
+    <section class="scene" data-dur="18000" aria-label="The receipt">
+      <p class="kick in" style="--d:0"><b>12</b><span>The answer carries its receipt</span></p>
+      <p class="tiny def in" style="--d:.15">A receipt is what travels with an answer: its definition, owner, version and a trace id that points at the SQL that ran.</p>
+      <div class="two">
+        <p class="big in" style="--d:.6" data-sfx="pop" data-t=".6">47<small>open A1C gaps · practice 12 · Q3 2026</small></p>
+        <div class="gl in" style="--d:1.4">
+          <span class="k">definition</span><span>open actions in the window, deduplicated on action_id</span>
+          <span class="k">owner</span><span>Head of Quality</span>
+          <span class="k">version</span><span>2026-10-08.1</span>
+          <span class="k">actual</span><span>164 rows · $0,0004 · beside the estimate</span>
+        </div>
+      </div>
+      <div class="term in" style="--d:2.6"><div><span class="dim"><span class="tip" tabindex="0" data-tip="Metric · version · trace id. The trace line behind that id holds the SQL that ran, the estimate it was linked to, and the actual rows and cost.">cite_as</span></span> &nbsp;<span class="ok">care_gaps_open v2026-10-08.1 · trace t-a39d072c12</span></div></div>
+      <p class="tiny in" style="--d:4.2" data-sfx="tick" data-t="3.4">Anyone with the trace can see the SQL that ran. The agent never saw it and could not have changed it.</p>
+      <aside class="ctx l" style="--d:4.8"><span class="ck">where this lives</span><div class="cb"><code>get_metric</code>: definition, owner, version, trace id on every answer; <code>docs/adr/0004</code>.</div></aside>
+      <aside class="ctx r" style="--d:5.4"><span class="ck">say it</span><div class="cb">“The agent never saw the SQL and could not have changed it. Anyone with the trace can.”</div></aside>
+    </section>
+    <!-- a refusal -->
+    <section class="scene" data-dur="19000" aria-label="A refusal">
+      <p class="kick in" style="--d:0"><b>13</b><span>A refusal is an answer</span></p>
+      <p class="tiny def in" style="--d:.15">A refusal is a reply that says no and quotes the rule that produced it.</p>
+      <h2 class="in" style="--d:.2">Same server. Different role. Read the rule.</h2>
+      <div class="rule in" style="--d:.9" data-sfx="gate" data-t=".9">policy: grain 'member' is not granted to role 'external' (no allow statement; default deny)</div>
+      <div class="rule in" style="--d:1.7" data-sfx="gate" data-t="1.7">policy: metric 'actions_paid_usd' is not granted to role 'external' (no allow statement; default deny)</div>
+      <div class="rule in" style="--d:2.5" data-sfx="gate" data-t="2.5">row policy: principal 'external.demo' may only see practice 12</div>
+      <p class="note in" style="--d:3.4">The skill repeats the rule in plain words and offers the nearest allowed question. It never retries around a rule.</p>
+      <p class="tiny in" style="--d:4.6">A cross-domain question is not refused, it is logged: <span class="tip" tabindex="0" data-tip="The intake tool. It records a business case, an owner and a review date, and can only answer granted: false. The grant is a commit to metrics.yaml, reviewed like code.">request_capability</span> records a business case, an owner and a review date, and grants nothing. A grant is a commit.</p>
+      <aside class="ctx l" style="--d:5.2"><span class="ck">where this lives</span><div class="cb"><code>_authorize()</code> runs first in every tool; every refusal is a trace line with its rule.</div></aside>
+      <aside class="ctx r" style="--d:5.8"><span class="ck">say it</span><div class="cb">“A refusal is an answer, and it names the statement that denied it.”</div></aside>
+    </section>
+    <!-- phi -->
+    <section class="scene" data-dur="17500" aria-label="PHI">
+      <p class="kick in" style="--d:0"><b>14</b><span>PHI</span></p>
+      <p class="tiny def in" style="--d:.15">PHI is protected health information: the columns that identify a person. Here: member_name, dob, member_number.</p>
+      <h2 class="in" style="--d:.2">The model never gets a tool that can read it.</h2>
+      <div class="term in" style="--d:.8">
+        <div><span class="dim">metrics.yaml</span></div>
+        <div class="in" style="--d:1.2">phi_columns: [<span class="bad">member_name</span>, <span class="bad">dob</span>, <span class="bad">member_number</span>]</div>
+        <div class="in" style="--d:1.9" data-sfx="block" data-t="1.9"><span class="p">server.py</span> &nbsp;a metric whose SQL names one of these <span class="ok"><span class="tip" tabindex="0" data-tip="server.py checks every metric's SQL against phi_columns at startup and exits if one is named. A violation is a failed start, not a warning.">does not load</span></span></div>
+        <div class="in" style="--d:2.5" data-sfx="tick" data-t="2.5">member grain: <span class="ok">member_id only</span> · analyst and above · never below</div>
+        <div class="dim in" style="--d:3.1">&nbsp;&nbsp;⎿ there is no SELECT the agent can write; the columns are not in any tool's reach</div>
+      </div>
+      <p class="note in" style="--d:3.8">The worry is not the model reading a row. It is the model reading a row and writing it somewhere else. Remove the read.</p>
+      <p class="tiny in" style="--d:4.4">Before the audit this list was a comment. Now it is enforced at startup.</p>
+      <aside class="ctx l" style="--d:5.0"><span class="ck">where this lives</span><div class="cb"><code>phi_columns</code> in <code>metrics.yaml</code>, checked at load in <code>server.py</code>: a metric naming one does not start.</div></aside>
+      <aside class="ctx r" style="--d:5.6"><span class="ck">say it</span><div class="cb">“The worry is read-then-write-elsewhere. So remove the read.”</div></aside>
+    </section>
+    <!-- evals -->
+    <section class="scene" data-dur="20500" aria-label="Evals">
+      <p class="kick in" style="--d:0"><b>15</b><span>Evals</span></p>
+      <p class="tiny def in" style="--d:.15">An eval is a question with an expected answer computed separately, run as a script that fails when the answer differs.</p>
+      <h2 class="in" style="--d:.2">The layer makes it correctable. Evals make it correct.</h2>
+      <div class="gr tight">
+        <div class="req hi in" style="--d:.9"><div class="req-top"><span>q14 · total paid · first run, raw join</span><span class="score">$1655182,50</span></div><div class="meter"><i style="--w:100%;--d:1.1"></i></div><div class="verdict">60 duplicated rows paid twice</div></div>
+        <div class="req lo in" style="--d:1.8" data-sfx="ding" data-t="2"><div class="req-top"><span>q14 · expected · <span class="tip" tabindex="0" data-tip="The expected value comes from SQL written separately from the metric's template: here the payments table alone, no join. Had it reused the template, it would have agreed with the bug.">independent SQL</span></span><span class="score">$1654002,00</span></div><div class="meter"><i style="--w:99.9%;--d:2"></i></div><div class="verdict">layer fixed · version → 2026-10-07.2</div></div>
+      </div>
+      <p class="stamp in" style="--d:3.2" data-sfx="stamp" data-t="3.2">23 of 23 pass · signed: false</p>
+      <p class="tiny in" style="--d:4.8">Expected values come from SQL written independently of the templates. Signing is a human act; the gate refuses to pass until a person signs.</p>
+      <aside class="ctx l" style="--d:5.4"><span class="ck">where this lives</span><div class="cb"><code>evals/questions.json</code>, 23 questions; <code>evals/run.py --require-signed</code> exits 3 until a person signs.</div></aside>
+      <aside class="ctx r" style="--d:6.0"><span class="ck">say it</span><div class="cb">“The layer made it correctable. The evals made it correct. q14 is the receipt.”</div></aside>
+    </section>
+    <!-- closed loop -->
+    <section class="scene" data-dur="17500" aria-label="Closed loop">
+      <p class="kick in" style="--d:0"><b>16</b><span>The closed loop</span></p>
+      <p class="tiny def in" style="--d:.15">A closed loop is a chain of steps where each feeds the next and none is done by hand.</p>
+      <h2 class="in" style="--d:.2">Nothing manual. Ask, price, answer, record, check, commit.</h2>
+      <div class="chain across five">
+        <div class="link in" style="--d:.9" data-sfx="tick" data-t=".9"><b>estimate</b><span>before</span></div><div class="arrow in" style="--d:1.1">→</div>
+        <div class="link in" style="--d:1.3" data-sfx="tick" data-t="1.3"><b>get_metric</b><span>actual beside it</span></div><div class="arrow in" style="--d:1.5">→</div>
+        <div class="link in" style="--d:1.7" data-sfx="tick" data-t="1.7"><b>record_answer</b><span>the model side</span></div><div class="arrow in" style="--d:1.9">→</div>
+        <div class="link in" style="--d:2.1" data-sfx="tick" data-t="2.1"><b>cost_report</b><span>the delta, per role</span></div><div class="arrow in" style="--d:2.3">→</div>
+        <div class="link final in" style="--d:2.5" data-sfx="ding" data-t="2.5"><b>evals gate</b><span>exit 1 on a miss</span></div>
+      </div>
+      <p class="sub in" style="--d:3.3">Every link is verified: an answer points at its own estimate, a model record at its own answer. A forged id is refused.</p>
+      <p class="tiny in" style="--d:4.2">Tier 3 runs the evals on every change and returns exact tokens through the Agent SDK. That is where the loop becomes a gate instead of a report.</p>
+      <aside class="ctx l" style="--d:4.8"><span class="ck">where this lives</span><div class="cb"><code>cost_report</code> and <code>record_answer</code>; links verified. Tier 3 in <code>plan.md</code> makes it a CI gate.</div></aside>
+      <aside class="ctx r" style="--d:5.4"><span class="ck">say it</span><div class="cb">“Nothing manual: ask, price, answer, record, check, commit.”</div></aside>
+    </section>
+    <!-- coverage -->
+    <section class="scene" data-dur="15000" aria-label="Coverage">
+      <p class="kick in" style="--d:0"><b>17</b><span>What the evals did not cover</span></p>
+      <p class="tiny def in" style="--d:.15">Coverage is the share of behaviour the tests actually exercise.</p>
+      <h2 class="in" style="--d:.2">The payer grain had never worked.</h2>
+      <div class="term in" style="--d:.8">
+        <div class="in" style="--d:1"><span class="bad"><span class="tip" tabindex="0" data-tip="Inside the subquery, the bare practice_id resolves to pr itself, so every practice matched every payer and DuckDB refused the scalar subquery. The fix names the outer table: actions.practice_id.">pr.practice_id = practice_id</span></span> <span class="dim">· a subquery comparing a column to itself</span></div>
+        <div class="in" style="--d:1.6" data-sfx="block" data-t="1.6"><span class="dim">DuckDB:</span> more than one row returned by a subquery</div>
+        <div class="in" style="--d:2.2" data-sfx="tick" data-t="2.2"><span class="ok">fix</span> pr.practice_id = <span class="ok">actions</span>.practice_id</div>
+        <div class="dim in" style="--d:2.8">&nbsp;&nbsp;⎿ 20 of 20 evals passed before and after. None asks at payer grain.</div>
+      </div>
+      <p class="verdict-line in" style="--d:3.8" data-sfx="tick" data-t="3.8">Coverage, not the layer, is what makes a number correct.</p>
+      <aside class="ctx l" style="--d:4.4"><span class="ck">where this lives</span><div class="cb"><code>BUILD-LOG.md</code>, 7. Oct: the payer grain; <code>decisions.md › Challenged</code>.</div></aside>
+      <aside class="ctx r" style="--d:5.0"><span class="ck">say it</span><div class="cb">“Twenty of twenty passed before and after. Coverage, not the layer, makes a number correct.”</div></aside>
+    </section>
+    <!-- join key -->
+    <section class="scene" data-dur="19000" aria-label="Join key">
+      <p class="kick in" style="--d:0"><b>18</b><span>A second fact table</span></p>
+      <p class="tiny def in" style="--d:.15">A fact table is one row per event, here one row per visit. A join key is the set of columns two tables are matched on; it is a modeling decision, and it decides the number.</p>
+      <h2 class="in" style="--d:.3">Same question. Three join keys. Three answers.</h2>
+      <div class="cost">
+        <div class="cost-row p in" style="--d:1" data-sfx="block" data-t="1"><span><span class="tip" tabindex="0" data-tip="Visits matched to completed actions on member_id alone: every member had one somewhere, sometime, so every visit matches. A rate of 1,0 that says nothing.">member only</span></span><div class="track"><i style="--w:100%;--d:1"></i><b style="--d:1">1,0000 · says nothing</b></div></div>
+        <div class="cost-row p in" style="--d:1.6" data-sfx="block" data-t="1.6"><span><span class="tip" tabindex="0" data-tip="Adds the month, not the practice: a walk-in at practice 12 borrows a completed action the same member had at their own practice that month.">member + month</span></span><div class="track"><i style="--w:51.6%;--d:1.6"></i><b style="--d:1.6">0,5163 · borrows other practices</b></div></div>
+        <div class="cost-row s in" style="--d:2.2" data-sfx="ding" data-t="2.2"><span><span class="tip" tabindex="0" data-tip="The key the definition names: same member, same practice, same month. A walk-in only counts if practice 12 itself closed a gap for that member that month.">member + practice + month</span></span><div class="track"><i style="--w:51.2%;--d:2.2"></i><b style="--d:2.2">0,5121 · the metric</b></div></div>
+      </div>
+      <p class="note in" style="--d:3.2">9 of 705 visits at Practice 12 in Q3 were walk-ins by members attributed elsewhere. Two of the three keys let those visits claim another practice's completed actions.</p>
+      <p class="tiny in" style="--d:4.8">The definition in metrics.yaml names the key. Eval q22 computes the expected value with an EXISTS instead of a join, so it can disagree. 22 of 22 pass; the first twenty were untouched, because the visits were drawn after the seeded stream.</p>
+      <aside class="ctx l" style="--d:5.4"><span class="ck">where this lives</span><div class="cb"><code>data/generate.py</code> (visits, trap 5); <code>visit_closure_rate</code> in <code>metrics.yaml</code>; evals q21, q22.</div></aside>
+      <aside class="ctx r" style="--d:6.0"><span class="ck">say it</span><div class="cb">“Same question, three join keys, three answers. The definition names the key.”</div></aside>
+    </section>
+    <!-- outro -->
+    <section class="scene" data-dur="999999" aria-label="Outro" id="outro">
+      <div class="bubble in" style="--d:.2" data-sfx="pop" data-t=".2">tl;dr</div>
+      <h2 class="in" style="--d:.6;margin-top:6px">Gates in the schema. Receipts on every answer. A price before it runs.</h2>
+      <p class="sub in" style="--d:1.2">Defined once, asked by name, denied by default, traced always, tested by an independent key.</p>
+      <div class="term in" style="--d:1.8">
+        <div><span class="p">$</span> <span data-type="uv run python tests/smoke.py   # 33 checks, one per refusal" data-at="2200" data-speed="35"></span></div>
+        <div class="dim in" style="--d:4.2">docs/walkthrough.html · docs/adr/ · metrics.yaml · server.py · explainer: ~/dev/explainers/2026-10-08_governance-is-a-schema.html</div>
+      </div>
+      <p class="sign in" style="--d:4.8" data-sfx="chord" data-t="4.8">Governed AI is the only AI <b>you can price.</b></p>
+      <div class="in" style="--d:5.2"><button class="btn" id="replay">Play again</button></div>
+      <aside class="ctx l" style="--d:5.8"><span class="ck">where this lives</span><div class="cb"><code>tests/smoke.py</code>: 40 checks, one per refusal. <code>docs/adr/</code>: six decisions.</div></aside>
+      <aside class="ctx r" style="--d:6.4"><span class="ck">say it</span><div class="cb">“Governance in the schema. Receipts on every answer. A price before it runs.”</div></aside>
+    </section>
+
+  </div>
+
+  <div class="controls">
+    <button id="prev" aria-label="Previous scene">‹</button>
+    <button id="play" aria-label="Pause">Pause</button>
+    <button id="mute" aria-label="Mute">Sound on</button>
+    <button id="next" aria-label="Next scene">›</button>
+    <label class="auto" title="Advance by itself when a scene has played out"><input type="checkbox" id="auto"> autoplay</label>
+    <button id="mapBtn" aria-label="Concept map">map</button>
+  </div>
+  <p class="hint" aria-hidden="true">scene done · → or click the right side for the next</p>
+</div>
+
+<script>
+(function(){
+/* ---------- audio: everything synthesized with Web Audio, no files ---------- */
+let ctx=null, master, musicBus, sfxBus, delayIn, noiseBuf, muted=false, schedTimer=null;
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+
+function initAudio(){
+  try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ctx=null; return; }
+  master=ctx.createGain(); master.gain.value=.9;
+  const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3;
+  master.connect(comp); comp.connect(ctx.destination);
+  musicBus=ctx.createGain(); musicBus.gain.value=.3; musicBus.connect(master);
+  sfxBus=ctx.createGain(); sfxBus.gain.value=.55; sfxBus.connect(master);
+  /* a short, dry slapback instead of the old washy echo: a dotted eighth, dark, one or two repeats */
+  delayIn=ctx.createGain(); delayIn.gain.value=.22;
+  const d=ctx.createDelay(1); d.delayTime.value=60/112*.75;
+  const fb=ctx.createGain(); fb.gain.value=.18;
+  const tone=ctx.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value=1800;
+  delayIn.connect(d); d.connect(tone); tone.connect(fb); fb.connect(d); tone.connect(musicBus);
+  noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate);
+  const ch=noiseBuf.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+}
+
+function osc({f,t,dur,type='sine',g=.1,a=.005,to=null,lp=null,dest=sfxBus,send=false}){
+  const o=ctx.createOscillator(); o.type=type; o.frequency.setValueAtTime(f,t);
+  if(to) o.frequency.exponentialRampToValueAtTime(to,t+dur*.6);
+  const gn=ctx.createGain(); gn.gain.setValueAtTime(0.0001,t);
+  gn.gain.exponentialRampToValueAtTime(g,t+a);
+  gn.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  let n=o; if(lp){const f2=ctx.createBiquadFilter(); f2.type='lowpass'; f2.frequency.value=lp; o.connect(f2); n=f2;}
+  n.connect(gn); gn.connect(dest); if(send) gn.connect(delayIn);
+  o.start(t); o.stop(t+dur+.05);
+}
+function noise({t,dur,g=.05,type='highpass',f=6000,dest=sfxBus,sweep=null}){
+  const s=ctx.createBufferSource(); s.buffer=noiseBuf;
+  const fl=ctx.createBiquadFilter(); fl.type=type; fl.frequency.setValueAtTime(f,t);
+  if(sweep) fl.frequency.exponentialRampToValueAtTime(sweep,t+dur);
+  const gn=ctx.createGain(); gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(g,t+Math.min(.02,dur/3)); gn.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(fl); fl.connect(gn); gn.connect(dest); s.start(t); s.stop(t+dur+.05);
+}
+
+/* music: mechanical and geometric, after the Bauhaus stage (Schlemmer's Triadic Ballet, Hindemith's
+   player-piano pieces). 112 BPM in eighths. A three-note marimba cell runs against an eight-step bar,
+   so the figure only re-aligns every three bars - a phasing pattern, Reich-style. Quartal chords in
+   D dorian, a 3-3-2 bass, dry clicks. No pads, no lo-fi warmth. */
+const BPM=112, STEP=60/BPM/2;
+const chords=[{r:38,n:[62,67,72]},{r:41,n:[60,65,70]},{r:36,n:[62,67,69]},{r:43,n:[62,67,74]}];
+let step=0, nextT=0;
+function marimba(m,t,g){
+  osc({f:mtof(m),t,dur:.32,type:'sine',g,a:.002,dest:musicBus,send:true});
+  osc({f:mtof(m)*4,t,dur:.06,type:'sine',g:g*.35,a:.001,dest:musicBus});   /* the bar's bright overtone, gone almost at once */
+}
+function playStep(s,t){
+  const bar=Math.floor(s/8)%4, c=chords[bar], i=s%8;
+  marimba(c.n[s%3]+(s%6<3?0:12),t,i===0?.07:.045);                          /* 3 against 8, octave flips every cell */
+  if(i===0||i===3||i===6) osc({f:mtof(c.r),t,dur:i===6?.22:.34,type:'square',g:.05,a:.004,lp:420,dest:musicBus});
+  if(i===0||i===4) osc({f:120,to:45,t,dur:.18,type:'sine',g:.26,a:.002,dest:musicBus});
+  if(i===2||i===6) noise({t,dur:.03,g:.05,type:'bandpass',f:2400,dest:musicBus});   /* rim, dry */
+  if(i%2===1) noise({t,dur:.02,g:.014,dest:musicBus});
+  if(i===0&&bar===0) osc({f:mtof(c.n[2]+12),t,dur:1.6,type:'triangle',g:.02,a:.01,lp:2200,dest:musicBus,send:true});
+}
+function scheduler(){
+  if(!ctx) return;
+  while(nextT<ctx.currentTime+.15){ playStep(step,nextT); nextT+=STEP; step=(step+1)%96; }   /* 96 = 3 cells x 32 steps: the full phase cycle */
+}
+function startMusic(){
+  if(!ctx) return;
+  musicBus.gain.cancelScheduledValues(ctx.currentTime); musicBus.gain.setValueAtTime(.3,ctx.currentTime);
+  step=0; nextT=ctx.currentTime+.1;
+  if(!schedTimer) schedTimer=setInterval(scheduler,25);
+}
+let fading=false;
+function fadeMusic(){ if(!ctx||fading) return; fading=true; const t=ctx.currentTime; musicBus.gain.setValueAtTime(musicBus.gain.value,t); musicBus.gain.linearRampToValueAtTime(0.0001,t+5); }
+
+const SFX={
+  click(t){ osc({f:1600+Math.random()*500,t,dur:.03,type:'square',g:.012,a:.001,lp:3200}); },
+  tick(t){ osc({f:1250,t,dur:.08,type:'sine',g:.05}); },
+  chime(t){ osc({f:1175,t,dur:.35,type:'sine',g:.045}); osc({f:1568,t:t+.06,dur:.4,type:'sine',g:.035}); },
+  pop(t){ osc({f:380,to:980,t,dur:.18,type:'sine',g:.14,a:.003}); },
+  ding(t){ osc({f:1175,t,dur:.8,type:'triangle',g:.08}); osc({f:1760,t:t+.01,dur:.6,type:'sine',g:.04}); },
+  gate(t){ osc({f:392,t,dur:.28,type:'square',g:.05,lp:1200}); osc({f:311,t:t+.22,dur:.4,type:'square',g:.05,lp:1200}); },
+  block(t){ osc({f:98,t,dur:.35,type:'sawtooth',g:.09,lp:500}); noise({t,dur:.12,g:.05,type:'lowpass',f:900}); },
+  drop(t){ osc({f:880,to:330,t,dur:.5,type:'triangle',g:.06}); },
+  stamp(t){ osc({f:95,to:38,t,dur:.35,type:'sine',g:.45,a:.002}); noise({t,dur:.18,g:.12,type:'lowpass',f:700}); },
+  whoosh(t){ noise({t,dur:.6,g:.07,type:'bandpass',f:400,sweep:3200}); },
+  sparkle(t){ [74,79,81,86,91,93].forEach((m,k)=>osc({f:mtof(m+12),t:t+k*.07,dur:.5,type:'triangle',g:.05})); },
+  chord(t){ [50,55,60,62,67,72].forEach((m,k)=>osc({f:mtof(m),t:t+k*.05,dur:2.4,type:'triangle',g:.045,a:.02,lp:2400})); }
+};
+function sfx(name){ if(ctx&&!muted&&SFX[name]) SFX[name](ctx.currentTime+.01); }
+
+/* ---------- timeline ---------- */
+const scenes=[...document.querySelectorAll('.scene')];
+const barsEl=document.getElementById('bars'), stage=document.getElementById('stage');
+const playBtn=document.getElementById('play'), muteBtn=document.getElementById('mute');
+scenes.forEach(()=>{const b=document.createElement('div');b.className='bar';b.innerHTML='<i></i>';barsEl.appendChild(b)});
+const fills=[...barsEl.querySelectorAll('i')];
+const typers=[...document.querySelectorAll('[data-type]')];
+let idx=0, elapsed=0, last=performance.now(), paused=false, started=false, fired=new Set();
+
+/* squares, circles and triangles in ink and rust, dropping through the frame */
+function confetti(){
+  const box=document.getElementById('confetti'); box.innerHTML='';
+  const cols=['var(--rust)','var(--ink)'];
+  for(let i=0;i<28;i++){
+    const s=document.createElement('span'), z=12+Math.random()*14, shape=i%3;
+    s.style.left=Math.random()*100+'%'; s.style.width=s.style.height=z+'px'; s.style.background=cols[i%2];
+    if(shape===1) s.style.borderRadius='50%';
+    if(shape===2) s.style.clipPath='polygon(50% 0,100% 100%,0 100%)';
+    s.style.animationDuration=(2.4+Math.random()*1.8)+'s'; s.style.animationDelay=(.6+Math.random()*1.2)+'s';
+    box.appendChild(s);
+  }
+}
+function show(i,quiet){
+  idx=Math.max(0,Math.min(scenes.length-1,i)); elapsed=0; fired=new Set();
+  scenes.forEach(s=>s.classList.remove('active'));
+  void stage.offsetWidth;
+  scenes[idx].classList.add('active'); (()=>{const nb=document.getElementById('next'),last=idx===scenes.length-1;nb.textContent=last?'Restart':'›';nb.setAttribute('aria-label',last?'Restart from the first scene':'Next scene');nb.classList.toggle('restart',last);})(); stage.classList.remove('ready');
+  fills.forEach((f,j)=>f.style.width=j<idx?'100%':'0');
+  typers.forEach(t=>{t.textContent='';t._n=0});
+  
+  if(!quiet) sfx('chime');
+}
+function tick(now){
+  const dt=now-last; last=now;
+  if(started&&!paused){
+    elapsed+=dt;
+    const s=scenes[idx], dur=+s.dataset.dur;
+    fills[idx].style.width=Math.min(100,elapsed/(dur>60000?6000:dur)*100)+'%';
+    s.querySelectorAll('[data-type]').forEach(t=>{
+      const txt=t.dataset.type, n=Math.max(0,Math.floor((elapsed-(+t.dataset.at))/(+t.dataset.speed)));
+      const shown=Math.min(n,txt.length);
+      if(shown>(t._n||0)){ if(txt[shown-1]!==' ') sfx('click'); t._n=shown; }
+      t.textContent=txt.slice(0,shown);
+      t.classList.toggle('caret',n<=txt.length+20);
+    });
+    s.querySelectorAll('[data-sfx]').forEach((el,k)=>{
+      if(!fired.has(k) && elapsed/1000>=+el.dataset.t){ fired.add(k); sfx(el.dataset.sfx); }
+    });
+    if(s.id==='outro' && elapsed>16000) fadeMusic();
+    if(elapsed>=dur && idx<scenes.length-1){ if(document.getElementById('auto').checked) show(idx+1); else if(!stage.classList.contains('ready')){ stage.classList.add('ready'); sfx('tick'); } }
+  }
+  requestAnimationFrame(tick);
+}
+function setPaused(p){
+  paused=p; stage.classList.toggle('paused',p);
+  playBtn.textContent=p?'Play':'Pause'; playBtn.setAttribute('aria-label',p?'Play':'Pause');
+  if(ctx) p?ctx.suspend():ctx.resume();
+}
+function setMuted(m){
+  muted=m; muteBtn.textContent=m?'Sound off':'Sound on'; muteBtn.setAttribute('aria-label',m?'Unmute':'Mute');
+  if(ctx) master.gain.setTargetAtTime(m?0:.9,ctx.currentTime,.05);
+}
+function begin(withSound){
+  document.getElementById('start').hidden=true;
+  if(!ctx) initAudio();
+  if(ctx){ ctx.resume(); startMusic(); }
+  setMuted(!withSound || !ctx);
+  started=true; stage.classList.add('started'); show(0,true);
+}
+document.getElementById('goSound').onclick=()=>begin(true);
+document.getElementById('goQuiet').onclick=()=>begin(false);
+playBtn.onclick=()=>{ if(started) setPaused(!paused); };
+muteBtn.onclick=()=>{ if(!ctx){initAudio(); if(ctx){ctx.resume();startMusic();}} setMuted(!muted); };
+(function(){const K='northstar-see-it:qa:'+location.pathname;let st={};try{st=JSON.parse(localStorage.getItem(K)||'{}')}catch(e){}
+document.querySelectorAll('.qa').forEach((d,i)=>{if(st[i])d.open=true;d.addEventListener('toggle',()=>{st[i]=d.open?1:0;try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}})});})();
+(function(){const a=document.getElementById('auto'), K='northstar-see-it:autoplay';try{a.checked=localStorage.getItem(K)==='1'}catch(e){} a.onchange=()=>{try{localStorage.setItem(K,a.checked?'1':'0')}catch(e){} if(a.checked&&stage.classList.contains('ready')) show(idx+1);};})();
+document.getElementById('mapBtn').onclick=()=>{const st=document.getElementById('start'); st.hidden=false; st.classList.add('again'); if(started&&!paused) setPaused(true); st.scrollTop=0;};
+document.getElementById('mapClose').onclick=()=>{const st=document.getElementById('start'); st.hidden=true; if(started&&paused) setPaused(false);};
+document.getElementById('next').onclick=()=>{ if(!started) return; if(idx===scenes.length-1){ setPaused(false); fading=false; startMusic(); show(0,true); } else show(idx+1); };
+document.getElementById('prev').onclick=()=>{ if(started) show(idx-1); };
+document.getElementById('replay').onclick=()=>{ setPaused(false); fading=false; startMusic(); show(0,true); };
+document.getElementById('screen').addEventListener('click',e=>{
+  if(!started||e.target.closest('a,button,.start,.tip,label')) return;
+  (e.clientX/window.innerWidth)<.3?show(idx-1):show(idx+1);
+});
+document.addEventListener('keydown',e=>{
+  if(!started) return;
+  if(e.key==='ArrowRight') show(idx+1);
+  if(e.key==='ArrowLeft') show(idx-1);
+  if(e.key===' '){e.preventDefault();setPaused(!paused)}
+  if(e.key==='m') setMuted(!muted);
+});
+/* embedded in laudeman.io's lightbox: Esc lands in this frame, not the parent, so pass it up to close the dialog */
+if(window.parent!==window) document.addEventListener('keydown',e=>{ if(e.key==='Escape') window.parent.postMessage('intro:close',location.origin); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&started&&!paused) setPaused(true); });
+requestAnimationFrame(tick);
+})();
+</script>
+<div id="tipbox" role="tooltip"></div>
+<script>(()=>{const box=document.getElementById('tipbox');let pinned=null;
+function show(el){box.textContent=el.dataset.tip;box.style.display='block';const r=el.getBoundingClientRect(),w=box.offsetWidth,h=box.offsetHeight;
+ let x=Math.min(Math.max(12,r.left+r.width/2-w/2),innerWidth-w-12),y=r.top-h-12;if(y<12)y=r.bottom+12;box.style.left=x+'px';box.style.top=y+'px'}
+function hide(){if(!pinned)box.style.display='none'}
+document.addEventListener('mouseover',e=>{const t=e.target.closest('.tip');if(t)show(t)});
+document.addEventListener('mouseout',e=>{if(e.target.closest('.tip'))hide()});
+document.addEventListener('focusin',e=>{const t=e.target.closest('.tip');if(t)show(t)});
+document.addEventListener('focusout',e=>{if(e.target.closest('.tip'))hide()});
+document.addEventListener('click',e=>{const t=e.target.closest('.tip');if(t){pinned=pinned===t?null:t;pinned?show(t):(box.style.display='none')}else if(pinned){pinned=null;box.style.display='none'}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){pinned=null;box.style.display='none'}});})();</script>
+</body>
+</html>

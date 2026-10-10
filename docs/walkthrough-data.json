@@ -1,0 +1,1881 @@
+{
+ "captured_at": "2026-10-08T11:46:58",
+ "roles": {
+  "admin": {
+   "whoami": {
+    "principal": "admin.demo",
+    "role": "admin",
+    "practice_scope": "all",
+    "scope_meaning": "explicit grant: every practice",
+    "policy": {
+     "tools": [
+      "*"
+     ],
+     "metrics": [
+      "*"
+     ],
+     "grains": [
+      "*"
+     ],
+     "trace_scope": [
+      "*"
+     ]
+    },
+    "source": "role and scope from server config; production: OIDC token subject and groups via a remote MCP connector",
+    "trace_id": "t-a5c3fa2ce6"
+   },
+   "list_metrics": {
+    "version": "2026-10-08.1",
+    "metrics": {
+     "care_gaps_open": {
+      "domain": "care_gaps",
+      "owner": "Head of Quality",
+      "unit": "actions",
+      "granted_to_you": true
+     },
+     "care_gaps_closed": {
+      "domain": "care_gaps",
+      "owner": "Head of Quality",
+      "unit": "actions",
+      "granted_to_you": true
+     },
+     "gap_closure_rate": {
+      "domain": "practice_performance",
+      "owner": "VP Analytics",
+      "unit": "ratio",
+      "granted_to_you": true
+     },
+     "actions_paid_usd": {
+      "domain": "payments",
+      "owner": "Finance",
+      "unit": "usd",
+      "granted_to_you": true
+     },
+     "visit_count": {
+      "domain": "practice_performance",
+      "owner": "VP Analytics",
+      "unit": "visits",
+      "granted_to_you": true
+     },
+     "visit_closure_rate": {
+      "domain": "practice_performance",
+      "owner": "VP Analytics",
+      "unit": "ratio",
+      "granted_to_you": true
+     },
+     "attributed_members": {
+      "domain": "membership",
+      "owner": "Head of Network",
+      "unit": "members",
+      "granted_to_you": true
+     }
+    },
+    "grains_by_role": {
+     "practice": [
+      "external",
+      "csm",
+      "analyst",
+      "admin"
+     ],
+     "payer": [
+      "csm",
+      "analyst",
+      "admin"
+     ],
+     "month": [
+      "external",
+      "csm",
+      "analyst",
+      "admin"
+     ],
+     "member": [
+      "analyst",
+      "admin"
+     ],
+     "total": [
+      "external",
+      "csm",
+      "analyst",
+      "admin"
+     ]
+    },
+    "trace_id": "t-f47f1f79ad"
+   },
+   "explain_metric": {
+    "metric": "care_gaps_open",
+    "domain": "care_gaps",
+    "owner": "Head of Quality",
+    "description": "Count of care actions with status 'open' in the window, deduplicated on action_id.",
+    "unit": "actions",
+    "version": "2026-10-08.1",
+    "sql_template": "SELECT COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open' {where}",
+    "trace_id": "t-579a64a091"
+   },
+   "estimate_naive": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "member",
+     "month_from": "2026-01",
+     "month_to": "2026-09",
+     "shaped_question": "all member-level open gaps, every practice, all year"
+    },
+    "result": {
+     "rows_scanned": 79864,
+     "result_rows": 8178,
+     "warehouse_usd": 0.183687,
+     "model_tokens_est": {
+      "input": 363,
+      "output": 114612
+     },
+     "model_usd_est": 1.720269,
+     "prices_as_of": "2026-10-07",
+     "label": "ESTIMATE (dry run; tokens are estimated, see ADR 0003)",
+     "trace_id": "t-6e5c46fb81"
+    }
+   },
+   "estimate_shaped": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "practice",
+     "practice_id": 12,
+     "month_from": "2026-07",
+     "month_to": "2026-09",
+     "measure": "A1C",
+     "shaped_question": "Practice 12 open A1C gaps, Q3"
+    },
+    "result": {
+     "rows_scanned": 164,
+     "result_rows": 1,
+     "warehouse_usd": 0.000377,
+     "model_tokens_est": {
+      "input": 357,
+      "output": 134
+     },
+     "model_usd_est": 0.003081,
+     "prices_as_of": "2026-10-07",
+     "label": "ESTIMATE (dry run; tokens are estimated, see ADR 0003)",
+     "trace_id": "t-a2d03f476f"
+    }
+   },
+   "get_metric": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "practice",
+     "practice_id": 12,
+     "month_from": "2026-07",
+     "month_to": "2026-09",
+     "measure": "A1C",
+     "shaped_question": "Practice 12 open A1C gaps, Q3",
+     "estimate_trace_id": "t-a2d03f476f"
+    },
+    "result": {
+     "metric": "care_gaps_open",
+     "value": [
+      {
+       "grain_key": "12",
+       "value": 47
+      }
+     ],
+     "unit": "actions",
+     "definition": "Count of care actions with status 'open' in the window, deduplicated on action_id.",
+     "owner": "Head of Quality",
+     "version": "2026-10-08.1",
+     "window": {
+      "from": "2026-07",
+      "to": "2026-09"
+     },
+     "filters": {
+      "practice_id": 12,
+      "payer": null,
+      "measure": "A1C"
+     },
+     "actual": {
+      "rows_scanned": 164,
+      "result_rows": 1,
+      "warehouse_usd": 0.000377,
+      "latency_ms": 14,
+      "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+     },
+     "estimate_trace_id": "t-a2d03f476f",
+     "trace_id": "t-a39d072c12",
+     "cite_as": "care_gaps_open v2026-10-08.1 \u00b7 trace t-a39d072c12"
+    }
+   },
+   "record_answer": {
+    "args": {
+     "trace_id": "t-a39d072c12",
+     "model": "claude-sonnet",
+     "input_tokens_est": 900,
+     "output_tokens_est": 180,
+     "answer_summary": "Practice 12 open A1C gaps Q3"
+    },
+    "result": {
+     "recorded": true,
+     "model_usd_est": 0.0054,
+     "prices_as_of": "2026-10-07",
+     "label": "ESTIMATED tokens (ADR 0003)",
+     "trace_id": "t-c1e117bcf1"
+    }
+   },
+   "same_number_twice": {
+    "a": {
+     "args": {
+      "metric": "gap_closure_rate",
+      "practice_id": 12,
+      "month_from": "2026-07",
+      "month_to": "2026-09"
+     },
+     "result": {
+      "metric": "gap_closure_rate",
+      "value": 0.6995,
+      "unit": "ratio",
+      "definition": "Completed actions divided by all actions in the window, deduplicated on action_id. The number a payer sees.",
+      "owner": "VP Analytics",
+      "version": "2026-10-08.1",
+      "window": {
+       "from": "2026-07",
+       "to": "2026-09"
+      },
+      "filters": {
+       "practice_id": 12,
+       "payer": null,
+       "measure": null
+      },
+      "actual": {
+       "rows_scanned": 915,
+       "result_rows": 1,
+       "warehouse_usd": 0.002105,
+       "latency_ms": 13,
+       "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+      },
+      "estimate_trace_id": null,
+      "trace_id": "t-a66d41c483",
+      "cite_as": "gap_closure_rate v2026-10-08.1 \u00b7 trace t-a66d41c483"
+     }
+    },
+    "b": {
+     "args": {
+      "metric": "gap_closure_rate",
+      "practice_id": 12,
+      "month_from": "2026-07",
+      "month_to": "2026-09",
+      "measure": null
+     },
+     "result": {
+      "metric": "gap_closure_rate",
+      "value": 0.6995,
+      "unit": "ratio",
+      "definition": "Completed actions divided by all actions in the window, deduplicated on action_id. The number a payer sees.",
+      "owner": "VP Analytics",
+      "version": "2026-10-08.1",
+      "window": {
+       "from": "2026-07",
+       "to": "2026-09"
+      },
+      "filters": {
+       "practice_id": 12,
+       "payer": null,
+       "measure": null
+      },
+      "actual": {
+       "rows_scanned": 915,
+       "result_rows": 1,
+       "warehouse_usd": 0.002105,
+       "latency_ms": 10,
+       "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+      },
+      "estimate_trace_id": null,
+      "trace_id": "t-88766fd3b6",
+      "cite_as": "gap_closure_rate v2026-10-08.1 \u00b7 trace t-88766fd3b6"
+     }
+    }
+   },
+   "request_capability": {
+    "args": {
+     "business_case": "exec view: closure by payer with payments",
+     "data_needed": "gap closure rate joined to actions_paid_usd by payer",
+     "owner": "VP Analytics",
+     "review_date": "2026-10-21"
+    },
+    "result": {
+     "status": "logged for review",
+     "granted": false,
+     "next": "reviewed by the metric owner before 2026-10-21; a grant is a commit to metrics.yaml",
+     "trace_id": "t-b998e47781"
+    }
+   },
+   "unknown_measure": {
+    "args": {
+     "metric": "care_gaps_open",
+     "measure": "HBA1C"
+    },
+    "result": {
+     "refused": true,
+     "rule": "unknown measure 'HBA1C'; known: ['A1C', 'BP', 'CCS', 'COL', 'AWV', 'SDOH']",
+     "trace_id": "t-9d81e152b5"
+    }
+   },
+   "cost_report": {
+    "days": 1,
+    "scope": "all principals",
+    "answers": 3,
+    "refusals": 1,
+    "per_answer": [
+     {
+      "trace_id": "t-a39d072c12",
+      "principal": "admin.demo",
+      "metric": "care_gaps_open",
+      "grain": "practice",
+      "role": "admin",
+      "estimate_warehouse_usd": 0.000377,
+      "actual_warehouse_usd": 0.000377,
+      "estimate_rows": 164,
+      "actual_rows": 164,
+      "model_usd_est": 0.0054
+     },
+     {
+      "trace_id": "t-a66d41c483",
+      "principal": "admin.demo",
+      "metric": "gap_closure_rate",
+      "grain": "total",
+      "role": "admin",
+      "estimate_warehouse_usd": null,
+      "actual_warehouse_usd": 0.002105,
+      "estimate_rows": null,
+      "actual_rows": 915,
+      "model_usd_est": null
+     },
+     {
+      "trace_id": "t-88766fd3b6",
+      "principal": "admin.demo",
+      "metric": "gap_closure_rate",
+      "grain": "total",
+      "role": "admin",
+      "estimate_warehouse_usd": null,
+      "actual_warehouse_usd": 0.002105,
+      "estimate_rows": null,
+      "actual_rows": 915,
+      "model_usd_est": null
+     }
+    ],
+    "by_role_usd": {
+     "admin": 0.009987
+    },
+    "by_metric_usd": {
+     "care_gaps_open": 0.005777,
+     "gap_closure_rate": 0.00421
+    },
+    "prices_as_of": "2026-10-07",
+    "warehouse_rate_per_1k_rows": 0.0023,
+    "label": "model costs are ESTIMATES (ADR 0003)",
+    "trace_id": "t-bc5b37b910"
+   },
+   "audit_log": {
+    "count": 8,
+    "lines": [
+     {
+      "trace_id": "t-a2d03f476f",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "estimate_cost",
+      "args": {
+       "metric": "care_gaps_open",
+       "grain": "practice",
+       "practice_id": 12,
+       "payer": null,
+       "month_from": "2026-07",
+       "month_to": "2026-09",
+       "measure": "A1C"
+      },
+      "shaped_question": "Practice 12 open A1C gaps, Q3",
+      "estimate": {
+       "rows_scanned": 164,
+       "result_rows": 1,
+       "warehouse_usd": 0.000377,
+       "model_tokens_est": {
+        "input": 357,
+        "output": 134
+       },
+       "model_usd_est": 0.003081,
+       "prices_as_of": "2026-10-07",
+       "label": "ESTIMATE (dry run; tokens are estimated, see ADR 0003)"
+      },
+      "latency_ms": 6
+     },
+     {
+      "trace_id": "t-a39d072c12",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "get_metric",
+      "args": {
+       "metric": "care_gaps_open",
+       "grain": "practice",
+       "practice_id": 12,
+       "payer": null,
+       "month_from": "2026-07",
+       "month_to": "2026-09",
+       "measure": "A1C"
+      },
+      "shaped_question": "Practice 12 open A1C gaps, Q3",
+      "sql": "SELECT practice_id AS grain_key, COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open'  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH AND measure = 'A1C' GROUP BY practice_id ORDER BY practice_id",
+      "actual": {
+       "rows_scanned": 164,
+       "result_rows": 1,
+       "warehouse_usd": 0.000377,
+       "latency_ms": 14,
+       "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+      },
+      "estimate_trace_id": "t-a2d03f476f"
+     },
+     {
+      "trace_id": "t-c1e117bcf1",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "record_answer",
+      "for_trace": "t-a39d072c12",
+      "model": "claude-sonnet",
+      "tokens_est": {
+       "input": 900,
+       "output": 180
+      },
+      "model_usd_est": 0.0054,
+      "answer_summary": "Practice 12 open A1C gaps Q3"
+     },
+     {
+      "trace_id": "t-a66d41c483",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "get_metric",
+      "args": {
+       "metric": "gap_closure_rate",
+       "grain": "total",
+       "practice_id": 12,
+       "payer": null,
+       "month_from": "2026-07",
+       "month_to": "2026-09",
+       "measure": null
+      },
+      "shaped_question": "What share of Practice 12's care actions got done in Q3?",
+      "sql": "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH",
+      "actual": {
+       "rows_scanned": 915,
+       "result_rows": 1,
+       "warehouse_usd": 0.002105,
+       "latency_ms": 13,
+       "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+      },
+      "estimate_trace_id": null
+     },
+     {
+      "trace_id": "t-88766fd3b6",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "get_metric",
+      "args": {
+       "metric": "gap_closure_rate",
+       "grain": "total",
+       "practice_id": 12,
+       "payer": null,
+       "month_from": "2026-07",
+       "month_to": "2026-09",
+       "measure": null
+      },
+      "shaped_question": "Practice 12 gap closure rate, July through September",
+      "sql": "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH",
+      "actual": {
+       "rows_scanned": 915,
+       "result_rows": 1,
+       "warehouse_usd": 0.002105,
+       "latency_ms": 10,
+       "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+      },
+      "estimate_trace_id": null
+     },
+     {
+      "trace_id": "t-b998e47781",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "request_capability",
+      "request": {
+       "business_case": "exec view: closure by payer with payments",
+       "data_needed": "gap closure rate joined to actions_paid_usd by payer",
+       "owner": "VP Analytics",
+       "review_date": "2026-10-21"
+      }
+     },
+     {
+      "trace_id": "t-9d81e152b5",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "estimate_cost",
+      "args": {
+       "metric": "care_gaps_open",
+       "grain": "total",
+       "practice_id": null,
+       "payer": null,
+       "month_from": null,
+       "month_to": null,
+       "measure": "HBA1C"
+      },
+      "refused": "unknown measure 'HBA1C'; known: ['A1C', 'BP', 'CCS', 'COL', 'AWV', 'SDOH']"
+     },
+     {
+      "trace_id": "t-bc5b37b910",
+      "ts": "2026-10-08T11:46:58",
+      "principal": "admin.demo",
+      "role": "admin",
+      "tool": "cost_report",
+      "args": {
+       "days": 1
+      }
+     }
+    ],
+    "trace_id": "t-39d56d2487"
+   }
+  },
+  "external": {
+   "whoami": {
+    "principal": "external.demo",
+    "role": "external",
+    "practice_scope": 12,
+    "scope_meaning": "one practice: 12",
+    "policy": {
+     "tools": [
+      "whoami",
+      "list_metrics",
+      "explain_metric",
+      "estimate_cost",
+      "get_metric",
+      "practice_scorecard",
+      "request_capability",
+      "record_answer"
+     ],
+     "metrics": [
+      "care_gaps_open",
+      "care_gaps_closed",
+      "gap_closure_rate",
+      "visit_count",
+      "visit_closure_rate"
+     ],
+     "grains": [
+      "total",
+      "practice",
+      "month"
+     ],
+     "trace_scope": [
+      "own"
+     ]
+    },
+    "source": "role and scope from server config; production: OIDC token subject and groups via a remote MCP connector",
+    "trace_id": "t-1c682ac2c4"
+   },
+   "member_grain": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "member",
+     "month_from": "2026-01",
+     "month_to": "2026-09"
+    },
+    "result": {
+     "refused": true,
+     "rule": "policy: grain 'member' is not granted to role 'external' (no allow statement; default deny)",
+     "trace_id": "t-7d77e17b14"
+    }
+   },
+   "other_practice": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "practice",
+     "practice_id": 3,
+     "month_from": "2026-07",
+     "month_to": "2026-09"
+    },
+    "result": {
+     "refused": true,
+     "rule": "row policy: principal 'external.demo' may only see practice 12",
+     "trace_id": "t-1ba911ced1"
+    }
+   },
+   "own_practice": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "practice",
+     "practice_id": 12,
+     "month_from": "2026-07",
+     "month_to": "2026-09",
+     "measure": "A1C"
+    },
+    "result": {
+     "metric": "care_gaps_open",
+     "value": [
+      {
+       "grain_key": "12",
+       "value": 47
+      }
+     ],
+     "unit": "actions",
+     "definition": "Count of care actions with status 'open' in the window, deduplicated on action_id.",
+     "owner": "Head of Quality",
+     "version": "2026-10-08.1",
+     "window": {
+      "from": "2026-07",
+      "to": "2026-09"
+     },
+     "filters": {
+      "practice_id": 12,
+      "payer": null,
+      "measure": "A1C"
+     },
+     "actual": {
+      "rows_scanned": 164,
+      "result_rows": 1,
+      "warehouse_usd": 0.000377,
+      "latency_ms": 11,
+      "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+     },
+     "estimate_trace_id": null,
+     "trace_id": "t-958b07ab67",
+     "cite_as": "care_gaps_open v2026-10-08.1 \u00b7 trace t-958b07ab67"
+    }
+   },
+   "money_metric": {
+    "args": {
+     "metric": "actions_paid_usd",
+     "grain": "practice",
+     "practice_id": 12,
+     "month_from": "2026-07",
+     "month_to": "2026-09"
+    },
+    "result": {
+     "refused": true,
+     "rule": "policy: metric 'actions_paid_usd' is not granted to role 'external' (no allow statement; default deny)",
+     "trace_id": "t-b24e9aee92"
+    }
+   },
+   "audit_log": {
+    "refused": true,
+    "rule": "policy: tool 'audit_log' is not granted to role 'external' (no allow statement; default deny)",
+    "trace_id": "t-d2a8d5fbba"
+   }
+  },
+  "csm": {
+   "whoami": {
+    "principal": "csm.demo",
+    "role": "csm",
+    "practice_scope": "all",
+    "scope_meaning": "explicit grant: every practice",
+    "policy": {
+     "tools": [
+      "whoami",
+      "list_metrics",
+      "explain_metric",
+      "estimate_cost",
+      "get_metric",
+      "practice_scorecard",
+      "request_capability",
+      "record_answer",
+      "cost_report"
+     ],
+     "metrics": [
+      "care_gaps_open",
+      "care_gaps_closed",
+      "gap_closure_rate",
+      "actions_paid_usd",
+      "attributed_members",
+      "visit_count",
+      "visit_closure_rate"
+     ],
+     "grains": [
+      "total",
+      "practice",
+      "payer",
+      "month"
+     ],
+     "trace_scope": [
+      "own"
+     ]
+    },
+    "source": "role and scope from server config; production: OIDC token subject and groups via a remote MCP connector",
+    "trace_id": "t-86a5fdfd37"
+   },
+   "member_grain": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "member"
+    },
+    "result": {
+     "refused": true,
+     "rule": "policy: grain 'member' is not granted to role 'csm' (no allow statement; default deny)",
+     "trace_id": "t-fd1f38eead"
+    }
+   },
+   "payer_grain": {
+    "args": {
+     "metric": "care_gaps_open",
+     "grain": "payer",
+     "month_from": "2026-07",
+     "month_to": "2026-09"
+    },
+    "result": {
+     "metric": "care_gaps_open",
+     "value": [
+      {
+       "grain_key": "Blue Harbor Health",
+       "value": 3111
+      },
+      {
+       "grain_key": "Cascade Mutual",
+       "value": 1790
+      },
+      {
+       "grain_key": "Meridian Plan",
+       "value": 2681
+      }
+     ],
+     "unit": "actions",
+     "definition": "Count of care actions with status 'open' in the window, deduplicated on action_id.",
+     "owner": "Head of Quality",
+     "version": "2026-10-08.1",
+     "window": {
+      "from": "2026-07",
+      "to": "2026-09"
+     },
+     "filters": {
+      "practice_id": null,
+      "payer": null,
+      "measure": null
+     },
+     "actual": {
+      "rows_scanned": 26744,
+      "result_rows": 3,
+      "warehouse_usd": 0.061511,
+      "latency_ms": 17,
+      "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+     },
+     "estimate_trace_id": null,
+     "trace_id": "t-1eae762f53",
+     "cite_as": "care_gaps_open v2026-10-08.1 \u00b7 trace t-1eae762f53"
+    }
+   },
+   "paid_apr_p3": {
+    "args": {
+     "metric": "actions_paid_usd",
+     "grain": "practice",
+     "practice_id": 3,
+     "month_from": "2026-04",
+     "month_to": "2026-04"
+    },
+    "result": {
+     "metric": "actions_paid_usd",
+     "value": [
+      {
+       "grain_key": "3",
+       "value": 4837.5
+      }
+     ],
+     "unit": "usd",
+     "definition": "Sum of payments by paid_month (the month the payment run happened, not the action month). Joined to actions deduplicated on action_id; a double-submitted action is paid once.",
+     "owner": "Finance",
+     "version": "2026-10-08.1",
+     "window": {
+      "from": "2026-04",
+      "to": "2026-04"
+     },
+     "filters": {
+      "practice_id": 3,
+      "payer": null,
+      "measure": null
+     },
+     "actual": {
+      "rows_scanned": 169,
+      "result_rows": 1,
+      "warehouse_usd": 0.000389,
+      "latency_ms": 21,
+      "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+     },
+     "estimate_trace_id": null,
+     "trace_id": "t-21c5e7c531",
+     "cite_as": "actions_paid_usd v2026-10-08.1 \u00b7 trace t-21c5e7c531"
+    }
+   },
+   "paid_may_p3": {
+    "args": {
+     "metric": "actions_paid_usd",
+     "grain": "practice",
+     "practice_id": 3,
+     "month_from": "2026-05",
+     "month_to": "2026-05"
+    },
+    "result": {
+     "metric": "actions_paid_usd",
+     "value": [
+      {
+       "grain_key": "3",
+       "value": 15399.0
+      }
+     ],
+     "unit": "usd",
+     "definition": "Sum of payments by paid_month (the month the payment run happened, not the action month). Joined to actions deduplicated on action_id; a double-submitted action is paid once.",
+     "owner": "Finance",
+     "version": "2026-10-08.1",
+     "window": {
+      "from": "2026-05",
+      "to": "2026-05"
+     },
+     "filters": {
+      "practice_id": 3,
+      "payer": null,
+      "measure": null
+     },
+     "actual": {
+      "rows_scanned": 535,
+      "result_rows": 1,
+      "warehouse_usd": 0.001231,
+      "latency_ms": 20,
+      "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+     },
+     "estimate_trace_id": null,
+     "trace_id": "t-cb8332897f",
+     "cite_as": "actions_paid_usd v2026-10-08.1 \u00b7 trace t-cb8332897f"
+    }
+   }
+  },
+  "admin_unset": {
+   "whoami": {
+    "principal": "admin.demo",
+    "role": "admin",
+    "practice_scope": null,
+    "scope_meaning": "UNSET or invalid: every data tool will refuse",
+    "policy": {
+     "tools": [
+      "*"
+     ],
+     "metrics": [
+      "*"
+     ],
+     "grains": [
+      "*"
+     ],
+     "trace_scope": [
+      "*"
+     ]
+    },
+    "source": "role and scope from server config; production: OIDC token subject and groups via a remote MCP connector",
+    "trace_id": "t-a98345a11a"
+   },
+   "get_metric": {
+    "args": {
+     "metric": "care_gaps_open",
+     "practice_id": 12
+    },
+    "result": {
+     "refused": true,
+     "rule": "scope policy: no practice scope configured for principal 'admin.demo' (role 'admin'); PRACTICE_ID must be an existing practice number or the explicit grant 'all'",
+     "trace_id": "t-6cdd0bbb45"
+    }
+   }
+  }
+ },
+ "metrics_yaml": {
+  "version": "2026-10-08.1",
+  "rate_per_1k_rows_usd": 0.0023,
+  "domains": [
+   "practice_performance",
+   "care_gaps",
+   "payments",
+   "membership"
+  ],
+  "phi_columns": [
+   "member_name",
+   "dob",
+   "member_number"
+  ],
+  "policy": {
+   "default": "deny",
+   "roles": {
+    "external": {
+     "tools": [
+      "whoami",
+      "list_metrics",
+      "explain_metric",
+      "estimate_cost",
+      "get_metric",
+      "practice_scorecard",
+      "request_capability",
+      "record_answer"
+     ],
+     "metrics": [
+      "care_gaps_open",
+      "care_gaps_closed",
+      "gap_closure_rate",
+      "visit_count",
+      "visit_closure_rate"
+     ],
+     "grains": [
+      "total",
+      "practice",
+      "month"
+     ],
+     "trace_scope": [
+      "own"
+     ]
+    },
+    "csm": {
+     "tools": [
+      "whoami",
+      "list_metrics",
+      "explain_metric",
+      "estimate_cost",
+      "get_metric",
+      "practice_scorecard",
+      "request_capability",
+      "record_answer",
+      "cost_report"
+     ],
+     "metrics": [
+      "care_gaps_open",
+      "care_gaps_closed",
+      "gap_closure_rate",
+      "actions_paid_usd",
+      "attributed_members",
+      "visit_count",
+      "visit_closure_rate"
+     ],
+     "grains": [
+      "total",
+      "practice",
+      "payer",
+      "month"
+     ],
+     "trace_scope": [
+      "own"
+     ]
+    },
+    "analyst": {
+     "tools": [
+      "whoami",
+      "list_metrics",
+      "explain_metric",
+      "estimate_cost",
+      "get_metric",
+      "practice_scorecard",
+      "request_capability",
+      "record_answer",
+      "cost_report"
+     ],
+     "metrics": [
+      "*"
+     ],
+     "grains": [
+      "total",
+      "practice",
+      "payer",
+      "month",
+      "member"
+     ],
+     "trace_scope": [
+      "own"
+     ]
+    },
+    "admin": {
+     "tools": [
+      "*"
+     ],
+     "metrics": [
+      "*"
+     ],
+     "grains": [
+      "*"
+     ],
+     "trace_scope": [
+      "*"
+     ]
+    }
+   }
+  },
+  "metrics": {
+   "care_gaps_open": {
+    "domain": "care_gaps",
+    "owner": "Head of Quality",
+    "description": "Count of care actions with status 'open' in the window, deduplicated on action_id.",
+    "sql": "SELECT COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open' {where}",
+    "unit": "actions"
+   },
+   "care_gaps_closed": {
+    "domain": "care_gaps",
+    "owner": "Head of Quality",
+    "description": "Count of care actions with status 'completed' in the window, deduplicated on action_id.",
+    "sql": "SELECT COUNT(DISTINCT action_id) AS value FROM actions WHERE status='completed' {where}",
+    "unit": "actions"
+   },
+   "gap_closure_rate": {
+    "domain": "practice_performance",
+    "owner": "VP Analytics",
+    "description": "Completed actions divided by all actions in the window, deduplicated on action_id. The number a payer sees.",
+    "sql": "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1 {where}",
+    "unit": "ratio"
+   },
+   "actions_paid_usd": {
+    "domain": "payments",
+    "owner": "Finance",
+    "description": "Sum of payments by paid_month (the month the payment run happened, not the action month). Joined to actions deduplicated on action_id; a double-submitted action is paid once.",
+    "sql": "SELECT ROUND(COALESCE(SUM(amount),0),2) AS value FROM payments p JOIN (SELECT DISTINCT action_id, member_id, practice_id, measure FROM actions) a USING(action_id) WHERE 1=1 {where_pay}",
+    "unit": "usd"
+   },
+   "visit_count": {
+    "domain": "practice_performance",
+    "owner": "VP Analytics",
+    "description": "Count of visits in the window, one row per visit, deduplicated on visit_id. Visits are counted at the practice where they happened, attributed or not.",
+    "sql": "SELECT COUNT(DISTINCT v.visit_id) AS value FROM visits v WHERE 1=1 {where_visits}",
+    "unit": "visits"
+   },
+   "visit_closure_rate": {
+    "domain": "practice_performance",
+    "owner": "VP Analytics",
+    "description": "Share of visits where the same member had a completed care action at the same practice in the same month. Joined on member, practice and month, so a walk-in at another practice does not borrow that practice's actions; actions deduplicated on action_id.",
+    "sql": "SELECT ROUND(COUNT(DISTINCT v.visit_id) FILTER (WHERE a.member_id IS NOT NULL) * 1.0 / NULLIF(COUNT(DISTINCT v.visit_id),0), 4) AS value FROM visits v LEFT JOIN (SELECT DISTINCT member_id, practice_id, date_trunc('month', action_date) AS m FROM actions WHERE status='completed') a ON a.member_id=v.member_id AND a.practice_id=v.practice_id AND a.m=date_trunc('month', v.visit_date) WHERE 1=1 {where_visits}",
+    "unit": "ratio"
+   },
+   "attributed_members": {
+    "domain": "membership",
+    "owner": "Head of Network",
+    "description": "Distinct members attributed to a practice in the window. A member attributed to two practices counts once per practice.",
+    "sql": "SELECT COUNT(DISTINCT member_id) AS value FROM attribution WHERE 1=1 {where_attr}",
+    "unit": "members"
+   }
+  }
+ },
+ "prices_yaml": {
+  "as_of": "2026-10-07",
+  "models": {
+   "claude-sonnet": {
+    "input_per_mtok_usd": 3.0,
+    "output_per_mtok_usd": 15.0
+   },
+   "claude-opus": {
+    "input_per_mtok_usd": 15.0,
+    "output_per_mtok_usd": 75.0
+   },
+   "claude-haiku": {
+    "input_per_mtok_usd": 0.8,
+    "output_per_mtok_usd": 4.0
+   }
+  },
+  "default_model": "claude-sonnet"
+ },
+ "skill_md": "---\nname: shape-my-question\ndescription: Turn a vague business question about Northstar Care's practices, care gaps, payments or membership into a shaped, priced, governed answer from the semantic layer. Use whenever someone asks how a practice, payer or measure is doing, or wants a number from the warehouse.\n---\n\n# Shape my question\n\nYou are the analyst between a business user and the warehouse. You never write SQL and never guess a metric. The warehouse is reached only through the `northstar` MCP tools, which only answer metrics by name.\n\n## \"How is X doing?\" has a known shape: answer it first, then offer the knobs\n\nIf the question is about how a practice is doing (any phrasing), do not interrogate. Call `practice_scorecard` for the\npractice and show the four signals as a table: gap closure rate quarter to date beside the payer's peers, open gaps by\nmeasure, visits per attributed member over three months, paid by month. Put the defaults it chose in the caption (as-of\nmonth, the windows, the peer payer). Then one line of knobs: a different window, one measure, a grain, a payer; each is a\n`get_metric` call. Interrogating first is what makes an agent feel like a form. The three questions below are the\nadjustment menu, not the entry gate. A cell the server refused shows its rule in place of the number.\n\n## The flow for every other question\n\n1. **Name the metric.** Call `list_metrics` once per conversation. Map the question to one metric. If none fits, say which metrics exist and offer `request_capability`; do not approximate.\n2. **Ask the three analyst questions**, one message, before any query:\n   - which measures (A1C, BP, CCS, COL, AWV, SDOH, or all)\n   - which months (from, to)\n   - which practice or payer, and at what grain (total, practice, payer, month). Member grain only if the user is an analyst and has a reason.\n3. **Price it first.** Call `estimate_cost` with the shaped question in `shaped_question`. Tell the user the rows, warehouse cost and estimated model cost in one line. If it is wide (member grain, all practices, all year), say what a narrower version would cost and offer it. Re-estimate after narrowing.\n4. **Then answer.** Call `get_metric` with the same arguments and the estimate's `trace_id` in `estimate_trace_id`. Report the value with its unit, the definition in one sentence, the owner and version, the window and filters, and the actual cost beside the estimate.\n5. **Record the model side.** Call `record_answer` with the `trace_id`, the model you believe you are, and your estimate of input and output tokens for this answer. Say they are estimates.\n6. **Cite.** End with `cite_as` from the result. Example: \"care_gaps_open v2026-10-07.1 \u00b7 trace t-4926f3231d\".\n\n## When the server refuses\n\nRead the `rule`, repeat it to the user in plain words, and offer the nearest allowed question. Never retry with different arguments to get around a rule. A refusal is an answer.\n\n## Never\n\n- Never compute a number yourself from rows, and never combine two metrics into a third. Cross-domain questions go to `request_capability`.\n- Never ask for member grain for an external or CSM user.\n- Never present a token figure as exact.\n",
+ "project_instructions": "You are helping Northstar Care staff get numbers from the analytics warehouse. Northstar runs four analytics domains: practice performance, care gaps, payments, membership. Metrics are defined once in the semantic layer and have owners and versions; you ask for them by name through the northstar MCP tools and never write SQL.\n\nBefore any query: confirm measures, months, and practice or payer. Price the question with estimate_cost and say what it costs. Narrow it if it is wide. Answer with get_metric, cite the definition, owner, version and trace id, and show actual cost beside the estimate. A refusal from the server is an answer: explain the rule and offer the nearest allowed question. Token costs are estimates.\n",
+ "trace_lines": [
+  {
+   "trace_id": "t-a5c3fa2ce6",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "whoami"
+  },
+  {
+   "trace_id": "t-f47f1f79ad",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "list_metrics"
+  },
+  {
+   "trace_id": "t-579a64a091",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "explain_metric",
+   "args": {
+    "metric": "care_gaps_open"
+   }
+  },
+  {
+   "trace_id": "t-6e5c46fb81",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "estimate_cost",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "member",
+    "practice_id": null,
+    "payer": null,
+    "month_from": "2026-01",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "shaped_question": "all member-level open gaps, every practice, all year",
+   "estimate": {
+    "rows_scanned": 79864,
+    "result_rows": 8178,
+    "warehouse_usd": 0.183687,
+    "model_tokens_est": {
+     "input": 363,
+     "output": 114612
+    },
+    "model_usd_est": 1.720269,
+    "prices_as_of": "2026-10-07",
+    "label": "ESTIMATE (dry run; tokens are estimated, see ADR 0003)"
+   },
+   "latency_ms": 9
+  },
+  {
+   "trace_id": "t-a2d03f476f",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "estimate_cost",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "practice",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": "A1C"
+   },
+   "shaped_question": "Practice 12 open A1C gaps, Q3",
+   "estimate": {
+    "rows_scanned": 164,
+    "result_rows": 1,
+    "warehouse_usd": 0.000377,
+    "model_tokens_est": {
+     "input": 357,
+     "output": 134
+    },
+    "model_usd_est": 0.003081,
+    "prices_as_of": "2026-10-07",
+    "label": "ESTIMATE (dry run; tokens are estimated, see ADR 0003)"
+   },
+   "latency_ms": 6
+  },
+  {
+   "trace_id": "t-a39d072c12",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "get_metric",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "practice",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": "A1C"
+   },
+   "shaped_question": "Practice 12 open A1C gaps, Q3",
+   "sql": "SELECT practice_id AS grain_key, COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open'  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH AND measure = 'A1C' GROUP BY practice_id ORDER BY practice_id",
+   "actual": {
+    "rows_scanned": 164,
+    "result_rows": 1,
+    "warehouse_usd": 0.000377,
+    "latency_ms": 14,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": "t-a2d03f476f"
+  },
+  {
+   "trace_id": "t-c1e117bcf1",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "record_answer",
+   "for_trace": "t-a39d072c12",
+   "model": "claude-sonnet",
+   "tokens_est": {
+    "input": 900,
+    "output": 180
+   },
+   "model_usd_est": 0.0054,
+   "answer_summary": "Practice 12 open A1C gaps Q3"
+  },
+  {
+   "trace_id": "t-a66d41c483",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "get_metric",
+   "args": {
+    "metric": "gap_closure_rate",
+    "grain": "total",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "shaped_question": "What share of Practice 12's care actions got done in Q3?",
+   "sql": "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH",
+   "actual": {
+    "rows_scanned": 915,
+    "result_rows": 1,
+    "warehouse_usd": 0.002105,
+    "latency_ms": 13,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-88766fd3b6",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "get_metric",
+   "args": {
+    "metric": "gap_closure_rate",
+    "grain": "total",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "shaped_question": "Practice 12 gap closure rate, July through September",
+   "sql": "SELECT ROUND(COUNT(DISTINCT CASE WHEN status='completed' THEN action_id END) * 1.0 / NULLIF(COUNT(DISTINCT action_id),0), 4) AS value FROM actions WHERE 1=1  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH",
+   "actual": {
+    "rows_scanned": 915,
+    "result_rows": 1,
+    "warehouse_usd": 0.002105,
+    "latency_ms": 10,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-b998e47781",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "request_capability",
+   "request": {
+    "business_case": "exec view: closure by payer with payments",
+    "data_needed": "gap closure rate joined to actions_paid_usd by payer",
+    "owner": "VP Analytics",
+    "review_date": "2026-10-21"
+   }
+  },
+  {
+   "trace_id": "t-9d81e152b5",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "estimate_cost",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "total",
+    "practice_id": null,
+    "payer": null,
+    "month_from": null,
+    "month_to": null,
+    "measure": "HBA1C"
+   },
+   "refused": "unknown measure 'HBA1C'; known: ['A1C', 'BP', 'CCS', 'COL', 'AWV', 'SDOH']"
+  },
+  {
+   "trace_id": "t-bc5b37b910",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "cost_report",
+   "args": {
+    "days": 1
+   }
+  },
+  {
+   "trace_id": "t-39d56d2487",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "audit_log",
+   "args": {
+    "n": 8
+   }
+  },
+  {
+   "trace_id": "t-1c682ac2c4",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "whoami"
+  },
+  {
+   "trace_id": "t-7d77e17b14",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "estimate_cost",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "member",
+    "practice_id": null,
+    "payer": null,
+    "month_from": "2026-01",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "refused": "policy: grain 'member' is not granted to role 'external' (no allow statement; default deny)"
+  },
+  {
+   "trace_id": "t-1ba911ced1",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "get_metric",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "practice",
+    "practice_id": 3,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "refused": "row policy: principal 'external.demo' may only see practice 12"
+  },
+  {
+   "trace_id": "t-958b07ab67",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "get_metric",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "practice",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": "A1C"
+   },
+   "shaped_question": null,
+   "sql": "SELECT practice_id AS grain_key, COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open'  AND practice_id = 12 AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH AND measure = 'A1C' GROUP BY practice_id ORDER BY practice_id",
+   "actual": {
+    "rows_scanned": 164,
+    "result_rows": 1,
+    "warehouse_usd": 0.000377,
+    "latency_ms": 11,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-b24e9aee92",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "get_metric",
+   "args": {
+    "metric": "actions_paid_usd",
+    "grain": "practice",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "refused": "policy: metric 'actions_paid_usd' is not granted to role 'external' (no allow statement; default deny)"
+  },
+  {
+   "trace_id": "t-d2a8d5fbba",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "external.demo",
+   "role": "external",
+   "tool": "audit_log",
+   "args": {
+    "n": 3
+   },
+   "refused": "policy: tool 'audit_log' is not granted to role 'external' (no allow statement; default deny)"
+  },
+  {
+   "trace_id": "t-86a5fdfd37",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "csm.demo",
+   "role": "csm",
+   "tool": "whoami"
+  },
+  {
+   "trace_id": "t-fd1f38eead",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "csm.demo",
+   "role": "csm",
+   "tool": "estimate_cost",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "member",
+    "practice_id": null,
+    "payer": null,
+    "month_from": null,
+    "month_to": null,
+    "measure": null
+   },
+   "refused": "policy: grain 'member' is not granted to role 'csm' (no allow statement; default deny)"
+  },
+  {
+   "trace_id": "t-1eae762f53",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "csm.demo",
+   "role": "csm",
+   "tool": "get_metric",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "payer",
+    "practice_id": null,
+    "payer": null,
+    "month_from": "2026-07",
+    "month_to": "2026-09",
+    "measure": null
+   },
+   "shaped_question": null,
+   "sql": "SELECT (SELECT payer FROM practices pr WHERE pr.practice_id = actions.practice_id) AS grain_key, COUNT(DISTINCT action_id) AS value FROM actions WHERE status='open'  AND action_date >= DATE '2026-07-01' AND action_date < DATE '2026-09-01' + INTERVAL 1 MONTH GROUP BY (SELECT payer FROM practices pr WHERE pr.practice_id = actions.practice_id) ORDER BY (SELECT payer FROM practices pr WHERE pr.practice_id = actions.practice_id)",
+   "actual": {
+    "rows_scanned": 26744,
+    "result_rows": 3,
+    "warehouse_usd": 0.061511,
+    "latency_ms": 17,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-21c5e7c531",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "csm.demo",
+   "role": "csm",
+   "tool": "get_metric",
+   "args": {
+    "metric": "actions_paid_usd",
+    "grain": "practice",
+    "practice_id": 3,
+    "payer": null,
+    "month_from": "2026-04",
+    "month_to": "2026-04",
+    "measure": null
+   },
+   "shaped_question": null,
+   "sql": "SELECT p.practice_id AS grain_key, ROUND(COALESCE(SUM(amount),0),2) AS value FROM payments p JOIN (SELECT DISTINCT action_id, member_id, practice_id, measure FROM actions) a USING(action_id) WHERE 1=1  AND p.practice_id = 3 AND p.paid_month >= DATE '2026-04-01' AND p.paid_month <= DATE '2026-04-01' GROUP BY p.practice_id ORDER BY p.practice_id",
+   "actual": {
+    "rows_scanned": 169,
+    "result_rows": 1,
+    "warehouse_usd": 0.000389,
+    "latency_ms": 21,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-cb8332897f",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "csm.demo",
+   "role": "csm",
+   "tool": "get_metric",
+   "args": {
+    "metric": "actions_paid_usd",
+    "grain": "practice",
+    "practice_id": 3,
+    "payer": null,
+    "month_from": "2026-05",
+    "month_to": "2026-05",
+    "measure": null
+   },
+   "shaped_question": null,
+   "sql": "SELECT p.practice_id AS grain_key, ROUND(COALESCE(SUM(amount),0),2) AS value FROM payments p JOIN (SELECT DISTINCT action_id, member_id, practice_id, measure FROM actions) a USING(action_id) WHERE 1=1  AND p.practice_id = 3 AND p.paid_month >= DATE '2026-05-01' AND p.paid_month <= DATE '2026-05-01' GROUP BY p.practice_id ORDER BY p.practice_id",
+   "actual": {
+    "rows_scanned": 535,
+    "result_rows": 1,
+    "warehouse_usd": 0.001231,
+    "latency_ms": 20,
+    "label": "ACTUAL warehouse; model tokens arrive via record_answer"
+   },
+   "estimate_trace_id": null
+  },
+  {
+   "trace_id": "t-a98345a11a",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "whoami"
+  },
+  {
+   "trace_id": "t-6cdd0bbb45",
+   "ts": "2026-10-08T11:46:58",
+   "principal": "admin.demo",
+   "role": "admin",
+   "tool": "get_metric",
+   "args": {
+    "metric": "care_gaps_open",
+    "grain": "total",
+    "practice_id": 12,
+    "payer": null,
+    "month_from": null,
+    "month_to": null,
+    "measure": null
+   },
+   "refused": "scope policy: no practice scope configured for principal 'admin.demo' (role 'admin'); PRACTICE_ID must be an existing practice number or the explicit grant 'all'"
+  }
+ ],
+ "data": {
+  "tables": {
+   "practices": 24,
+   "members": 8178,
+   "attribution": 73642,
+   "actions": 79864,
+   "payments": 57359,
+   "visits": 61592
+  },
+  "columns": {
+   "practices": [
+    "practice_id",
+    "practice_name",
+    "state",
+    "payer"
+   ],
+   "members": [
+    "member_id",
+    "member_number",
+    "member_name",
+    "dob",
+    "sex",
+    "payer"
+   ],
+   "attribution": [
+    "member_id",
+    "practice_id",
+    "month"
+   ],
+   "actions": [
+    "action_id",
+    "member_id",
+    "practice_id",
+    "measure",
+    "status",
+    "action_date"
+   ],
+   "payments": [
+    "action_id",
+    "practice_id",
+    "paid_month",
+    "amount"
+   ],
+   "visits": [
+    "visit_id",
+    "member_id",
+    "practice_id",
+    "visit_date"
+   ]
+  },
+  "traps": {
+   "double_attribution": {
+    "sql": "SELECT count(*) FROM (SELECT member_id FROM attribution WHERE month=DATE '2026-03-01' GROUP BY member_id HAVING count(DISTINCT practice_id)>1)",
+    "value": 39
+   },
+   "silent_june_p7": {
+    "sql": "SELECT date_trunc('month',action_date) m, count(*) FROM actions WHERE practice_id=7 AND action_date BETWEEN DATE '2026-05-01' AND DATE '2026-07-31' GROUP BY 1 ORDER BY 1",
+    "rows": [
+     [
+      "2026-05",
+      258
+     ],
+     [
+      "2026-07",
+      247
+     ]
+    ]
+   },
+   "late_april_payments": {
+    "sql": "SELECT paid_month, round(sum(amount),2) FROM payments WHERE paid_month BETWEEN DATE '2026-03-01' AND DATE '2026-06-01' GROUP BY 1 ORDER BY 1",
+    "rows": [
+     [
+      "2026-03",
+      187134.0
+     ],
+     [
+      "2026-04",
+      92256.0
+     ],
+     [
+      "2026-05",
+      275029.5
+     ],
+     [
+      "2026-06",
+      178198.5
+     ]
+    ]
+   },
+   "duplicate_actions": {
+    "sql": "SELECT count(*) - count(DISTINCT action_id) FROM actions",
+    "value": 60
+   }
+  },
+  "q14": {
+   "naive_sql": "SELECT ROUND(SUM(amount),2) FROM payments p JOIN actions a USING(action_id) WHERE p.paid_month BETWEEN DATE '2026-01-01' AND DATE '2026-09-01'",
+   "naive_value": 1655182.5,
+   "dedup_value": 1654002.0,
+   "independent_sql": "SELECT ROUND(COALESCE(sum(amount),0),2) FROM payments WHERE paid_month>=DATE '2026-01-01' AND paid_month<=DATE '2026-09-01'",
+   "independent_value": 1654002.0
+  },
+  "p12_sample": [
+   {
+    "action_id": "37932",
+    "member_id": "3893",
+    "measure": "A1C",
+    "status": "open",
+    "action_date": "2026-07-06"
+   },
+   {
+    "action_id": "38855",
+    "member_id": "3991",
+    "measure": "A1C",
+    "status": "open",
+    "action_date": "2026-07-06"
+   },
+   {
+    "action_id": "38382",
+    "member_id": "3940",
+    "measure": "A1C",
+    "status": "open",
+    "action_date": "2026-07-07"
+   },
+   {
+    "action_id": "38880",
+    "member_id": "3994",
+    "measure": "A1C",
+    "status": "open",
+    "action_date": "2026-07-07"
+   },
+   {
+    "action_id": "38672",
+    "member_id": "3972",
+    "measure": "A1C",
+    "status": "open",
+    "action_date": "2026-07-08"
+   }
+  ],
+  "join_key": {
+   "question": "share of Practice 12's Q3 visits where the member had a completed action there that month",
+   "keys": [
+    {
+     "key": "member only",
+     "value": 1.0
+    },
+    {
+     "key": "member + month",
+     "value": 0.5163
+    },
+    {
+     "key": "member + practice + month",
+     "value": 0.5121
+    }
+   ],
+   "visits": 705,
+   "walk_ins": 9
+  },
+  "oltp_star": {
+   "members": [
+    {
+     "member_id": "3809",
+     "member_number": "MBR003809",
+     "member_name": "Member 3809",
+     "dob": "1966-11-28",
+     "sex": "F",
+     "payer": "Blue Harbor Health"
+    }
+   ],
+   "practices": [
+    {
+     "practice_id": "12",
+     "practice_name": "Practice 12",
+     "state": "TN",
+     "payer": "Blue Harbor Health"
+    }
+   ],
+   "actions": [
+    {
+     "action_id": "37126",
+     "member_id": "3809",
+     "practice_id": "12",
+     "measure": "AWV",
+     "status": "completed",
+     "action_date": "2026-01-05"
+    },
+    {
+     "action_id": "37128",
+     "member_id": "3809",
+     "practice_id": "12",
+     "measure": "SDOH",
+     "status": "completed",
+     "action_date": "2026-04-07"
+    }
+   ],
+   "payments": [
+    {
+     "action_id": "37126",
+     "practice_id": "12",
+     "paid_month": "2026-01-01",
+     "amount": "30.0"
+    },
+    {
+     "action_id": "37128",
+     "practice_id": "12",
+     "paid_month": "2026-04-01",
+     "amount": "22.5"
+    }
+   ]
+  }
+ },
+ "evals": {
+  "version": "2026-10-08.1",
+  "signed": false,
+  "count": 23,
+  "signed_count": 0,
+  "questions": [
+   {
+    "id": "q01",
+    "question": "How many open care gaps does Practice 12 have, 2026-07 to 2026-09?",
+    "metric": "care_gaps_open",
+    "expected": 275
+   },
+   {
+    "id": "q02",
+    "question": "How many open care gaps does Practice 03 have, 2026-01 to 2026-03?",
+    "metric": "care_gaps_open",
+    "expected": 421
+   },
+   {
+    "id": "q03",
+    "question": "How many open care gaps does Practice 07 have, 2026-06 to 2026-06?",
+    "metric": "care_gaps_open",
+    "expected": 0
+   },
+   {
+    "id": "q04",
+    "question": "Open A1C gaps for Practice 12, 2026-07 to 2026-09",
+    "metric": "care_gaps_open",
+    "expected": 47
+   },
+   {
+    "id": "q05",
+    "question": "Open AWV gaps for Practice 05, 2026-01 to 2026-09",
+    "metric": "care_gaps_open",
+    "expected": 161
+   },
+   {
+    "id": "q06",
+    "question": "Gap closure rate for Practice 12, 2026-07 to 2026-09",
+    "metric": "gap_closure_rate",
+    "expected": 0.6995
+   },
+   {
+    "id": "q07",
+    "question": "Gap closure rate for Practice 01, 2026-01 to 2026-09",
+    "metric": "gap_closure_rate",
+    "expected": 0.7133
+   },
+   {
+    "id": "q08",
+    "question": "Gap closure rate across Blue Harbor Health practices, Jan to Sep 2026",
+    "metric": "gap_closure_rate",
+    "expected": 0.719
+   },
+   {
+    "id": "q09",
+    "question": "Gap closure rate across Meridian Plan practices, Jan to Sep 2026",
+    "metric": "gap_closure_rate",
+    "expected": 0.7163
+   },
+   {
+    "id": "q10",
+    "question": "Gap closure rate across Cascade Mutual practices, Jan to Sep 2026",
+    "metric": "gap_closure_rate",
+    "expected": 0.7221
+   },
+   {
+    "id": "q11",
+    "question": "How much was Practice 03 paid in 2026-04?",
+    "metric": "actions_paid_usd",
+    "expected": 4837.5
+   },
+   {
+    "id": "q12",
+    "question": "How much was Practice 03 paid in 2026-05?",
+    "metric": "actions_paid_usd",
+    "expected": 15399.0
+   },
+   {
+    "id": "q13",
+    "question": "How much was Practice 12 paid in 2026-08?",
+    "metric": "actions_paid_usd",
+    "expected": 5928.0
+   },
+   {
+    "id": "q14",
+    "question": "Total paid to all practices, Jan to Sep 2026",
+    "metric": "actions_paid_usd",
+    "expected": 1654002.0
+   },
+   {
+    "id": "q15",
+    "question": "Attributed members at Practice 12, 2026-03 to 2026-03",
+    "metric": "attributed_members",
+    "expected": 286
+   },
+   {
+    "id": "q16",
+    "question": "Attributed members at Practice 12, 2026-07 to 2026-09",
+    "metric": "attributed_members",
+    "expected": 285
+   },
+   {
+    "id": "q17",
+    "question": "Attributed members at Practice 20, 2026-01 to 2026-09",
+    "metric": "attributed_members",
+    "expected": 466
+   },
+   {
+    "id": "q18",
+    "question": "Closed care gaps across all practices, Q3 2026",
+    "metric": "care_gaps_closed",
+    "expected": 19144
+   },
+   {
+    "id": "q19",
+    "question": "Closed SDOH screens, Cascade Mutual practices, all year",
+    "metric": "care_gaps_closed",
+    "expected": 2259
+   },
+   {
+    "id": "q20",
+    "question": "Gap closure rate, Practice 12, Q3, asked a second way (same expected value as q06)",
+    "metric": "gap_closure_rate",
+    "expected": 0.6995
+   },
+   {
+    "id": "q21",
+    "question": "How many visits did Practice 12 have, Q3 2026?",
+    "metric": "visit_count",
+    "expected": 705
+   },
+   {
+    "id": "q22",
+    "question": "Share of Practice 12's Q3 visits where the member had a completed action there that month",
+    "metric": "visit_closure_rate",
+    "expected": 0.5121
+   },
+   {
+    "id": "q23",
+    "question": "Practice 12 scorecard, as of 2026-09: the quarter-to-date gap closure rate must be the Q3 rate",
+    "metric": "gap_closure_rate",
+    "expected": 0.6995
+   }
+  ]
+ }
+}
