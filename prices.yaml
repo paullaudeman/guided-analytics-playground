@@ -1,8 +1,16 @@
-# Model prices used to estimate the model cost of an answer. Hand-filled; the date is shown on every report.
-# These are placeholders for the playground, not a quote of any vendor's live price list. Update and re-date before use.
-as_of: 2026-10-07
+# Model prices used to estimate the model cost of an answer, USD per million tokens. The date is shown on every report.
+# Source: platform.claude.com/docs/en/about-claude/pricing, read 9. Oct 2026 (the same table as skynet-hunter's cost.py).
+# A drift watch (D11): an unknown model id is refused, so a stale table fails loudly. Update and re-date when models change.
+as_of: 2026-10-10
 models:
-  claude-sonnet:   { input_per_mtok_usd: 3.00,  output_per_mtok_usd: 15.00 }
-  claude-opus:     { input_per_mtok_usd: 15.00, output_per_mtok_usd: 75.00 }
-  claude-haiku:    { input_per_mtok_usd: 0.80,  output_per_mtok_usd: 4.00 }
-default_model: claude-sonnet
+  claude-opus-5-5:   { input_per_mtok_usd: 4.00,  output_per_mtok_usd: 20.00 }
+  claude-sonnet-5-5: { input_per_mtok_usd: 2.00,  output_per_mtok_usd: 10.00 }
+  claude-haiku-5-5:  { input_per_mtok_usd: 0.10,  output_per_mtok_usd: 0.50 }   # prompts up to 100K tokens
+  claude-fable-5-1:  { input_per_mtok_usd: 10.00, output_per_mtok_usd: 50.00 }
+  claude-opus-5:     { input_per_mtok_usd: 5.00,  output_per_mtok_usd: 25.00 }
+  claude-sonnet-5:   { input_per_mtok_usd: 2.00,  output_per_mtok_usd: 10.00 }
+  # Tier aliases, priced as the current model of each tier, for clients that report a family name.
+  claude-opus:       { input_per_mtok_usd: 4.00,  output_per_mtok_usd: 20.00 }
+  claude-sonnet:     { input_per_mtok_usd: 2.00,  output_per_mtok_usd: 10.00 }
+  claude-haiku:      { input_per_mtok_usd: 0.10,  output_per_mtok_usd: 0.50 }
+default_model: claude-sonnet-5-5
